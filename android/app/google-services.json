@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "586826078940",
+    "project_id": "aurafit-app-2026",
+    "storage_bucket": "aurafit-app-2026.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:586826078940:android:6936f82c7013ea9f977219",
+        "android_client_info": {
+          "package_name": "com.aurafit.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "586826078940-0o8k8j7c4kjk74579jbnphoksolum8bu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aurafit.app",
+            "certificate_hash": "2e3d63752585d813066bd84a2de3ca49affad771"
+          }
+        },
+        {
+          "client_id": "586826078940-5k5rk5sk8ernvn9chli24j62no3qpfvu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDeLVqILI0mz8xWvjFlW7pV18vCrNJ6PjI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "586826078940-5k5rk5sk8ernvn9chli24j62no3qpfvu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

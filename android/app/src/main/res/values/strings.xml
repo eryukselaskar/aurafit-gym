@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AuraFit</string>
+    <string name="title_activity_main">AuraFit</string>
+    <string name="package_name">com.aurafit.app</string>
+    <string name="custom_url_scheme">com.aurafit.app</string>
+    <string name="server_client_id">586826078940-5k5rk5sk8ernvn9chli24j62no3qpfvu.apps.googleusercontent.com</string>
+</resources>
