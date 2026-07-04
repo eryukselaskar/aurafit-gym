@@ -47,22 +47,16 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     restLeft = restSecondsLeft,
     restDur = restDuration,
     restEx = currentRestExercise,
-    restStart = isResting ? (getSavedWorkoutState()?.restStartTime || Date.now()) : null
+    customStartTime?: number,
+    customAccumulated?: number,
+    customRestStartTime?: number | null
   ) => {
     try {
       const saved = getSavedWorkoutState();
-      let accumulated = currentElapsed;
-      let startTime = Date.now();
-      
-      if (running) {
-        startTime = saved && saved.isTimerRunning ? saved.workoutStartTime : Date.now();
-        accumulated = saved && saved.isTimerRunning ? saved.accumulatedTime : currentElapsed;
-        accumulated = currentElapsed;
-        startTime = Date.now();
-      } else {
-        accumulated = currentElapsed;
-        startTime = Date.now();
-      }
+      const startTime = customStartTime !== undefined ? customStartTime : timerStartTime;
+      const accumulated = customAccumulated !== undefined ? customAccumulated : accumulatedSeconds;
+      const restStart = customRestStartTime !== undefined ? customRestStartTime : (resting ? (saved?.restStartTime || Date.now()) : null);
+      void currentElapsed;
 
       const state = {
         activeProgram,
@@ -81,6 +75,22 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
       console.error("Failed to save active workout state:", e);
     }
   };
+
+  const [timerStartTime, setTimerStartTime] = useState<number>(() => {
+    const saved = getSavedWorkoutState();
+    if (saved && saved.activeProgram?.id === activeProgram.id) {
+      return saved.workoutStartTime || Date.now();
+    }
+    return Date.now();
+  });
+
+  const [accumulatedSeconds, setAccumulatedSeconds] = useState<number>(() => {
+    const saved = getSavedWorkoutState();
+    if (saved && saved.activeProgram?.id === activeProgram.id) {
+      return saved.accumulatedTime || 0;
+    }
+    return 0;
+  });
 
   // Main workout timer
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(() => {
@@ -113,6 +123,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   });
 
   const timerIntervalRef = useRef<any>(null);
+  const saveDebounceRef = useRef<any>(null);
 
   // Refs to avoid stale closures in listeners
   const handleFinishWorkoutRef = useRef<any>(null);
@@ -136,15 +147,20 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
         pauseWorkoutService();
       }
     } else {
-      const initialized = activeProgram.exercises.map(ex => ({
-        ...ex,
-        sets: ex.sets.map(s => ({
-          ...s,
-          actualReps: s.reps,
-          actualWeight: s.weight,
-          completed: false
-        }))
-      }));
+      const initialized = activeProgram.exercises.map(ex => {
+        return {
+          ...ex,
+          sets: ex.sets.map(s => {
+            return {
+              ...s,
+              actualReps: undefined,
+              actualWeight: undefined,
+              actualRir: undefined,
+              completed: false
+            };
+          })
+        };
+      });
       setExercises(initialized);
       startWorkoutService(activeProgram.name, 0);
       
@@ -213,17 +229,35 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   // Main React-side timer clock
   useEffect(() => {
     if (isTimerRunning) {
-      timerIntervalRef.current = setInterval(() => {
-        setElapsedSeconds(prev => prev + 1);
-      }, 1000);
+      const syncTime = () => {
+        const diff = Math.floor((Date.now() - timerStartTime) / 1000);
+        setElapsedSeconds(accumulatedSeconds + Math.max(0, diff));
+      };
+      syncTime();
+      timerIntervalRef.current = setInterval(syncTime, 1000);
     } else {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      setElapsedSeconds(accumulatedSeconds);
     }
 
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [isTimerRunning]);
+  }, [isTimerRunning, timerStartTime, accumulatedSeconds]);
+
+  // Listen for visibility change to re-sync the timer instantly
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isTimerRunning) {
+        const diff = Math.floor((Date.now() - timerStartTime) / 1000);
+        setElapsedSeconds(accumulatedSeconds + Math.max(0, diff));
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isTimerRunning, timerStartTime, accumulatedSeconds]);
 
   // Helper to construct dynamic progress string for notification
   const getProgressString = (currentExercises: WorkoutExercise[]) => {
@@ -258,11 +292,15 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     setIsTimerRunning(prev => {
       const next = !prev;
       if (next) {
+        const now = Date.now();
+        setTimerStartTime(now);
         resumeWorkoutService(elapsedSeconds);
+        saveWorkoutState(exercises, true, elapsedSeconds, isResting, restSecondsLeft, restDuration, currentRestExercise, now, elapsedSeconds);
       } else {
         pauseWorkoutService();
+        setAccumulatedSeconds(elapsedSeconds);
+        saveWorkoutState(exercises, false, elapsedSeconds, isResting, restSecondsLeft, restDuration, currentRestExercise, timerStartTime, elapsedSeconds);
       }
-      saveWorkoutState(exercises, next, elapsedSeconds, isResting, restSecondsLeft, restDuration, currentRestExercise);
       return next;
     });
   };
@@ -270,6 +308,16 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   const [showCelebration, setShowCelebration] = useState(false);
   const [newPRs, setNewPRs] = useState<PersonalRecord[]>([]);
   const [completedWorkoutData, setCompletedWorkoutData] = useState<CompletedWorkout | null>(null);
+  const [workoutNote, setWorkoutNote] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  const getLastSetPerformed = (exerciseId: string, setIdx: number) => {
+    const lastSession = [...history].reverse().find(w =>
+      w.exercises.some(we => we.exerciseId === exerciseId)
+    );
+    const lastEx = lastSession?.exercises.find(we => we.exerciseId === exerciseId);
+    return lastEx?.sets[setIdx] ?? null;
+  };
 
   const getExerciseVolumeHistory = (exerciseId: string) => {
     const data: { date: string; volume: number; maxWeight: number }[] = [];
@@ -406,6 +454,13 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     }
     return 0;
   });
+  const [restStartTime, setRestStartTime] = useState<number | null>(() => {
+    const saved = getSavedWorkoutState();
+    if (saved && saved.activeProgram?.id === activeProgram.id) {
+      return saved.restStartTime || null;
+    }
+    return null;
+  });
   const [currentRestExercise, setCurrentRestExercise] = useState<string>(() => {
     const saved = getSavedWorkoutState();
     if (saved && saved.activeProgram?.id === activeProgram.id) {
@@ -417,22 +472,26 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   const restIntervalRef = useRef<any>(null);
 
   useEffect(() => {
-    if (isResting && restSecondsLeft > 0) {
-      restIntervalRef.current = setInterval(() => {
-        setRestSecondsLeft(prev => {
-          if (prev <= 1) {
-            handleRestComplete();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (isResting && restStartTime) {
+      const syncRest = () => {
+        const elapsed = Math.floor((Date.now() - restStartTime) / 1000);
+        const remaining = restDuration - elapsed;
+        if (remaining <= 0) {
+          setRestSecondsLeft(0);
+          handleRestComplete();
+        } else {
+          setRestSecondsLeft(remaining);
+        }
+      };
+
+      syncRest();
+      restIntervalRef.current = setInterval(syncRest, 1000);
     }
 
     return () => {
       if (restIntervalRef.current) clearInterval(restIntervalRef.current);
     };
-  }, [isResting, restSecondsLeft]);
+  }, [isResting, restStartTime, restDuration]);
 
   // Synthesize dynamic chime when rest finishes using Web Audio API
   const playSynthesizedChime = () => {
@@ -466,35 +525,31 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
 
   const handleRestComplete = () => {
     setIsResting(false);
+    setRestStartTime(null);
     playSynthesizedChime();
     if (navigator.vibrate) {
       navigator.vibrate([200, 100, 200]); // Short dynamic vibration
     }
     syncWithBackgroundService(exercises, false, 0);
-    saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, null);
+    saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, undefined, undefined, null);
   };
 
   // Rest Controls
   const skipRest = () => {
     setIsResting(false);
+    setRestStartTime(null);
     setRestSecondsLeft(0);
     syncWithBackgroundService(exercises, false, 0);
-    saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, null);
+    saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, undefined, undefined, null);
   };
 
-  const addRestTime = (seconds: number) => {
-    let nextSecondsLeft = 0;
-    setRestSecondsLeft(prev => {
-      const next = prev + seconds;
-      nextSecondsLeft = next;
-      syncWithBackgroundService(exercises, isResting, next);
-      return next;
-    });
-    setRestDuration(prev => {
-      const nextDuration = prev + seconds;
-      saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, isResting, nextSecondsLeft, nextDuration, currentRestExercise, Date.now());
-      return nextDuration;
-    });
+  const changeRestDuration = (sec: number) => {
+    const now = Date.now();
+    setRestDuration(sec);
+    setRestStartTime(now);
+    setRestSecondsLeft(sec);
+    syncWithBackgroundService(exercises, isResting, sec);
+    saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, isResting, sec, sec, currentRestExercise, undefined, undefined, now);
   };
 
   // Active set toggle
@@ -520,18 +575,21 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
       // Clean previous rest
       if (restIntervalRef.current) clearInterval(restIntervalRef.current);
       
+      const now = Date.now();
       setCurrentRestExercise(targetEx.name);
       setRestDuration(targetEx.restTime);
+      setRestStartTime(now);
       setRestSecondsLeft(targetEx.restTime);
       setIsResting(true);
 
       syncWithBackgroundService(updated, true, targetEx.restTime);
-      saveWorkoutState(updated, isTimerRunning, elapsedSeconds, true, targetEx.restTime, targetEx.restTime, targetEx.name, Date.now());
+      saveWorkoutState(updated, isTimerRunning, elapsedSeconds, true, targetEx.restTime, targetEx.restTime, targetEx.name, undefined, undefined, now);
     } else {
       setIsResting(false);
+      setRestStartTime(null);
       setRestSecondsLeft(0);
       syncWithBackgroundService(updated, false, 0);
-      saveWorkoutState(updated, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, null);
+      saveWorkoutState(updated, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, undefined, undefined, null);
     }
   };
 
@@ -550,6 +608,19 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           return { ...s, [field]: value };
         })
       };
+    });
+    setExercises(updated);
+    if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
+    saveDebounceRef.current = setTimeout(() => {
+      saveWorkoutState(updated, isTimerRunning, elapsedSeconds, isResting, restSecondsLeft, restDuration, currentRestExercise);
+    }, 500);
+  };
+
+  const handleRemoveSetDuringWorkout = (exIdx: number, setIdx: number) => {
+    const updated = exercises.map((ex, eIdx) => {
+      if (eIdx !== exIdx) return ex;
+      if (ex.sets.length <= 1) return ex; // en az 1 set kalmalı
+      return { ...ex, sets: ex.sets.filter((_, sIdx) => sIdx !== setIdx) };
     });
     setExercises(updated);
     saveWorkoutState(updated, isTimerRunning, elapsedSeconds, isResting, restSecondsLeft, restDuration, currentRestExercise);
@@ -580,17 +651,21 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   };
 
   const handleFinishWorkout = () => {
-    // Check if at least one set is completed
-    const completedSetsCount = exercises.reduce((count, ex) => 
+    const completedSetsCount = exercises.reduce((count, ex) =>
       count + ex.sets.filter(s => s.completed).length, 0
     );
 
     if (completedSetsCount === 0) {
-      const confirmFinish = window.confirm(
-        'Hiçbir seti tamamlamadınız. Antrenmanı yine de bitirmek istiyor musunuz?'
-      );
-      if (!confirmFinish) return;
+      setConfirmModal({
+        message: 'Hiçbir seti tamamlamadınız. Antrenmanı yine de bitirmek istiyor musunuz?',
+        onConfirm: () => { setConfirmModal(null); doFinishWorkout(); }
+      });
+      return;
     }
+    doFinishWorkout();
+  };
+
+  const doFinishWorkout = () => {
 
     // Calculate volume: only count completed sets
     let totalVolume = 0;
@@ -609,9 +684,10 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
       programId: activeProgram.id,
       programName: activeProgram.name,
       date: new Date().toISOString().split('T')[0],
-      duration: Math.round(elapsedSeconds / 60) || 1, // at least 1 minute
+      duration: Math.round(elapsedSeconds / 60) || 1,
       totalVolume,
-      exercises
+      exercises,
+      notes: workoutNote.trim() || undefined
     };
 
     // V2 - Calculate if any Personal Records (PR) were broken in this session based on max weight
@@ -660,12 +736,10 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   };
 
   const handleCancelWorkout = () => {
-    const confirm = window.confirm(
-      'Mevcut antrenmanı iptal etmek istediğinizden emin misiniz? Kaydedilmemiş verileriniz kaybolacaktır.'
-    );
-    if (confirm) {
-      cancelWorkout();
-    }
+    setConfirmModal({
+      message: 'Mevcut antrenmanı iptal etmek istediğinizden emin misiniz? Kaydedilmemiş verileriniz kaybolacaktır.',
+      onConfirm: () => { setConfirmModal(null); cancelWorkout(); }
+    });
   };
 
   // Formatting utility
@@ -731,6 +805,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
       <div className="active-workout-layout">
         <div className="exercises-scroller">
           {exercises.map((ex, exIdx) => (
+
             <div key={ex.id} className="active-exercise-card glass-panel">
               <div className="active-card-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
@@ -755,25 +830,34 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
               <div className="active-sets-table">
                 <div className="active-table-row labels desktop-only">
                   <span>Set</span>
-                  <span>Hedef</span>
+                  <span>Hedef / Son Sefer</span>
                   <span>Ağırlık (kg)</span>
                   <span>Tekrar</span>
                   <span>RIR</span>
                   <span>Tamamla</span>
+                  <span></span>
                 </div>
 
-                {ex.sets.map((set, setIdx) => (
+                {ex.sets.map((set, setIdx) => {
+                  const lastSet = getLastSetPerformed(ex.exerciseId, setIdx);
+                  const lastHint = lastSet
+                    ? `${lastSet.actualWeight ?? lastSet.weight}kg × ${lastSet.actualReps ?? lastSet.reps}`
+                    : null;
+                  return (
                   <React.Fragment key={set.id}>
                     {/* Desktop Layout Row */}
                     <div className={`active-table-row data desktop-only ${set.completed ? 'set-done' : ''}`}>
                       <span className="set-num">{setIdx + 1}</span>
-                      <span className="set-target">{set.weight}kg x {ex.minReps && ex.maxReps ? `${ex.minReps}-${ex.maxReps} tekrar` : `${set.reps} tekrar`} {set.rir !== undefined ? `@RIR${set.rir}` : ''}</span>
-                      
-                      {/* Weight (Ağırlık) */}
+                      <div style={{ textAlign: 'left' }}>
+                        <span className="set-target">{set.weight}kg x {ex.minReps && ex.maxReps ? `${ex.minReps}-${ex.maxReps} tek` : `${set.reps} tek`} {set.rir !== undefined ? `@RIR${set.rir}` : ''}</span>
+                        {lastHint && <div style={{ fontSize: '10px', color: 'var(--accent-mint)', fontWeight: 700, marginTop: '2px' }}>↩ {lastHint}</div>}
+                      </div>
+
                       <div style={{ display: 'flex', width: '100%', justifyContent: 'center' }}>
                         <input
                           type="number"
-                          value={set.actualWeight ?? ''}
+                          value={set.actualWeight !== undefined ? set.actualWeight : ''}
+                          placeholder={set.weight !== undefined ? set.weight.toString() : ''}
                           onChange={(e) =>
                             handleActualChange(exIdx, setIdx, 'actualWeight', parseFloat(e.target.value) || 0)
                           }
@@ -782,11 +866,11 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                         />
                       </div>
 
-                      {/* Reps (Tekrar) */}
                       <div style={{ display: 'flex', width: '100%', justifyContent: 'center' }}>
                         <input
                           type="number"
-                          value={set.actualReps ?? ''}
+                          value={set.actualReps !== undefined ? set.actualReps : ''}
+                          placeholder={set.reps !== undefined ? set.reps.toString() : ''}
                           onChange={(e) =>
                             handleActualChange(exIdx, setIdx, 'actualReps', parseInt(e.target.value) || 0)
                           }
@@ -795,13 +879,12 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                         />
                       </div>
 
-                      {/* RIR */}
                       <div style={{ display: 'flex', width: '100%', justifyContent: 'center' }}>
                         <input
                           type="number"
                           min="0"
                           max="10"
-                          placeholder="RIR"
+                          placeholder={set.rir !== undefined ? set.rir.toString() : '2'}
                           value={set.actualRir !== undefined ? set.actualRir : ''}
                           onChange={(e) =>
                             handleActualChange(exIdx, setIdx, 'actualRir', parseInt(e.target.value) || 0)
@@ -821,15 +904,39 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                           <Check size={14} strokeWidth={3} />
                         </button>
                       </div>
+
+                      <div className="checkbox-cell">
+                        {!set.completed && ex.sets.length > 1 && (
+                          <button
+                            onClick={() => handleRemoveSetDuringWorkout(exIdx, setIdx)}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px', borderRadius: '4px', lineHeight: 1 }}
+                            aria-label="Seti sil"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Mobile Layout Row (Touch friendly single pill log) */}
+                    {/* Mobile Layout Row */}
                     <div className={`active-table-row-mobile mobile-only ${set.completed ? 'set-done' : ''}`}>
                       <div className="set-mobile-info">
-                        <span className="set-num-badge">Set {setIdx + 1}</span>
-                        <span className="set-target-desc">Hedef: {set.weight}kg x {ex.minReps && ex.maxReps ? `${ex.minReps}-${ex.maxReps} tekrar` : `${set.reps} tekrar`} {set.rir !== undefined ? `@RIR${set.rir}` : ''}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span className="set-num-badge">Set {setIdx + 1}</span>
+                          {!set.completed && ex.sets.length > 1 && (
+                            <button
+                              onClick={() => handleRemoveSetDuringWorkout(exIdx, setIdx)}
+                              style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px', lineHeight: 1 }}
+                              aria-label="Seti sil"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                        <span className="set-target-desc">Hedef: {set.weight}kg x {ex.minReps && ex.maxReps ? `${ex.minReps}-${ex.maxReps} tek` : `${set.reps} tek`}</span>
+                        {lastHint && <span style={{ fontSize: '10px', color: 'var(--accent-mint)', fontWeight: 700 }}>↩ {lastHint}</span>}
                       </div>
-                      
+
                       <button
                         type="button"
                         onClick={() => !set.completed && setActiveSetEdit({ exIdx, setIdx })}
@@ -855,7 +962,8 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                       </div>
                     </div>
                   </React.Fragment>
-                ))}
+                  );
+                })}
               </div>
 
               <button onClick={() => handleAddSetDuringWorkout(exIdx)} className="btn-add-set-during">
@@ -863,6 +971,32 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
               </button>
             </div>
           ))}
+
+          {/* Antrenman notu */}
+          <div className="glass-panel" style={{ padding: '16px 20px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
+              📝 Antrenman Notu <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opsiyonel)</span>
+            </label>
+            <textarea
+              value={workoutNote}
+              onChange={(e) => setWorkoutNote(e.target.value)}
+              placeholder="Bugün nasıl hissettiniz? Notlarınız burada saklanır..."
+              rows={2}
+              style={{
+                width: '100%',
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid var(--border-light)',
+                borderRadius: 'var(--radius-sm)',
+                color: 'var(--text-primary)',
+                fontSize: '13px',
+                padding: '10px 12px',
+                resize: 'vertical',
+                outline: 'none',
+                fontFamily: 'inherit',
+                boxSizing: 'border-box'
+              }}
+            />
+          </div>
         </div>
 
         {/* Dynamic floating/sticky Rest Timer panel */}
@@ -894,7 +1028,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                         cy="80"
                         r="70"
                         strokeDasharray={440}
-                        strokeDashoffset={(restSecondsLeft / restDuration) * 440}
+                        strokeDashoffset={restDuration > 0 ? (restSecondsLeft / restDuration) * 440 : 0}
                       />
                     </svg>
                     <div className="timer-text-container">
@@ -903,10 +1037,17 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                     </div>
                   </div>
 
-                  <div className="rest-timer-actions">
-                    <button onClick={() => addRestTime(30)} className="btn btn-secondary btn-sm">
-                      +30 sn
-                    </button>
+                  <div className="rest-timer-actions" style={{ flexWrap: 'wrap', gap: '8px' }}>
+                    {[60, 90, 120, 180].map(sec => (
+                      <button
+                        key={sec}
+                        onClick={() => changeRestDuration(sec)}
+                        className="btn btn-secondary btn-sm"
+                        style={{ minWidth: 44, padding: '4px 8px', fontSize: 12 }}
+                      >
+                        {sec < 60 ? `${sec}s` : sec === 60 ? '1dk' : sec === 90 ? '1.5dk' : sec === 120 ? '2dk' : '3dk'}
+                      </button>
+                    ))}
                     <button id="skip-rest-btn-desktop" onClick={skipRest} className="btn btn-primary btn-sm btn-icon">
                       <FastForward size={16} />
                     </button>
@@ -928,9 +1069,16 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   </div>
 
                   <div className="rest-actions-group">
-                    <button onClick={() => addRestTime(30)} className="btn btn-secondary btn-sm compact-btn">
-                      +30s
-                    </button>
+                    {[90, 120, 180].map(sec => (
+                      <button
+                        key={sec}
+                        onClick={() => changeRestDuration(sec)}
+                        className="btn btn-secondary btn-sm compact-btn"
+                        style={{ fontSize: 11 }}
+                      >
+                        {sec === 90 ? '1.5dk' : sec === 120 ? '2dk' : '3dk'}
+                      </button>
+                    ))}
                     <button id="skip-rest-btn-mobile" aria-label="skip-rest-btn-mobile" onClick={skipRest} className="btn btn-primary btn-sm compact-btn">
                       <FastForward size={14} />
                     </button>
@@ -1101,7 +1249,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
 
         .active-table-row {
           display: grid;
-          grid-template-columns: 40px 1.4fr 1fr 1fr 1fr 60px;
+          grid-template-columns: 40px 1.4fr 1fr 1fr 1fr 60px 36px;
           align-items: center;
           gap: 12px;
           padding: 8px 12px;
@@ -1787,7 +1935,42 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           0% { transform: translateY(-20px) rotate(0deg); }
           100% { transform: translateY(100vh) rotate(360deg); }
         }
+
+        .mini-input {
+          width: 68px;
+          height: 34px;
+          padding: 4px 6px !important;
+          text-align: center;
+          border-radius: var(--radius-sm) !important;
+          font-weight: 700;
+          font-family: var(--font-headings);
+          font-size: 14px !important;
+        }
+
+        .mini-input::placeholder {
+          color: var(--text-muted);
+          opacity: 0.6;
+        }
       `}</style>
+
+      {/* Custom confirm modal (replaces window.confirm) */}
+      {confirmModal && (
+        <div className="bottom-sheet-backdrop" onClick={() => setConfirmModal(null)}>
+          <div className="bottom-sheet-content glass-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', gap: '20px' }}>
+            <div className="bottom-sheet-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+              <div>
+                <h3 style={{ fontSize: '16px' }}>Emin misiniz?</h3>
+                <p style={{ marginTop: '8px', lineHeight: 1.5 }}>{confirmModal.message}</p>
+              </div>
+              <button className="btn-close-sheet" onClick={() => setConfirmModal(null)}><X size={20} /></button>
+            </div>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button className="btn btn-secondary" style={{ flex: 1, padding: '14px' }} onClick={() => setConfirmModal(null)}>İptal</button>
+              <button className="btn btn-danger" style={{ flex: 1, padding: '14px' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* V2 - Celebratory PR Broken Overlay */}
       {showCelebration && completedWorkoutData && (
@@ -1866,33 +2049,43 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                 </span>
               </div>
               <div className="slider-control-row">
-                <button 
+                <button
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
-                    handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', Math.max(0, current - 2.5));
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', Math.max(0, cur - 5));
                   }}
-                >
-                  -2.5
-                </button>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="300" 
-                  step="2.5" 
+                >-5</button>
+                <button
+                  className="btn btn-secondary btn-icon-small"
+                  onClick={() => {
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', Math.max(0, cur - 2.5));
+                  }}
+                >-2.5</button>
+                <input
+                  type="range"
+                  min="0"
+                  max="300"
+                  step="2.5"
                   value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight}
                   onChange={(e) => handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', parseFloat(e.target.value))}
                   className="touch-slider"
                 />
-                <button 
+                <button
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
-                    handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', current + 2.5);
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', cur + 2.5);
                   }}
-                >
-                  +2.5
-                </button>
+                >+2.5</button>
+                <button
+                  className="btn btn-secondary btn-icon-small"
+                  onClick={() => {
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', cur + 5);
+                  }}
+                >+5</button>
               </div>
             </div>
 

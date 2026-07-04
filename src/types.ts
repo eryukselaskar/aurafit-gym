@@ -52,6 +52,7 @@ export interface CompletedWorkout {
   duration: number; // dakika cinsinden
   totalVolume: number; // toplam kaldırılan ağırlık (set * reps * weight)
   exercises: WorkoutExercise[];
+  notes?: string; // Antrenman sonu notu
 }
 
 export type ActiveTab = 'dashboard' | 'programs' | 'active' | 'history' | 'exercises' | 'explore' | 'metrics' | 'profile';

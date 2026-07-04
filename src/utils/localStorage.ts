@@ -161,7 +161,133 @@ export const INITIAL_EXERCISES: Exercise[] = [
   { id: 'ex-129', name: 'Deficit Deadlift', category: 'Bacak', description: 'Kuvvet platformu veya plaka üzerinde durarak daha derin mesafeden yapılan deadlift.' },
   { id: 'ex-130', name: 'Donkey Calf Raise', category: 'Bacak', description: 'Öne eğilerek (sırt ağırlıklı veya makinede) yapılan kalf (baldır) kaldırma egzersizi.' },
   { id: 'ex-131', name: 'Drag Curl', category: 'Kol', description: 'Barı vücuda sürterek dirsekleri arkaya çekerek yapılan tepe noktası odaklı ön kol hareketi.' },
-  { id: 'ex-132', name: 'EZ-Bar Skullcrusher', category: 'Kol', description: 'Z-bar kullanarak sehpada yatarak yapılan arka kol alna press egzersizi.' }
+  { id: 'ex-132', name: 'EZ-Bar Skullcrusher', category: 'Kol', description: 'Z-bar kullanarak sehpada yatarak yapılan arka kol alna press egzersizi.' },
+
+  // Göğüs (Chest) - Genişletilmiş
+  { id: 'ex-133', name: 'Incline Cable Fly', category: 'Göğüs', description: 'Eğik pozisyonda kablo çaprazlaması. Üst göğüs liflerini esnetme odaklı çalıştırır.' },
+  { id: 'ex-134', name: 'Low Cable Fly', category: 'Göğüs', description: 'Aşağıdan yukarıya kablo çaprazlaması. Alt göğüs liflerini hedefler.' },
+  { id: 'ex-135', name: 'Svend Press', category: 'Göğüs', description: 'İki plaka arasında avuç içleriyle sıkıştırarak yapılan izometrik göğüs presi.' },
+  { id: 'ex-136', name: 'Smith Machine Incline Press', category: 'Göğüs', description: 'Smith makinesiyle eğik sehpada yapılan güvenli üst göğüs presi.' },
+  { id: 'ex-137', name: 'Dumbbell Pullover', category: 'Göğüs', description: 'Sehpada yatarak dambılı baş arkasından göğüs üstüne getiren kanat ve göğüs egzersizi.' },
+  { id: 'ex-138', name: 'Wide Push-Up', category: 'Göğüs', description: 'Geniş el duruşuyla yapılan şınav. Göğüs dış liflerini hedefler.' },
+  { id: 'ex-139', name: 'Archer Push-Up', category: 'Göğüs', description: 'Yana doğru yük aktararak yapılan tek kol ağırlıklı şınav varyasyonu.' },
+  { id: 'ex-140', name: 'Plyometric Push-Up', category: 'Göğüs', description: 'Yere inen gövdeyi patlayıcı bir kuvvetle iterek elleri yerden kaldıran güç şınavı.' },
+
+  // Sırt (Back) - Genişletilmiş
+  { id: 'ex-141', name: 'Pendlay Row', category: 'Sırt', description: 'Barı her tekrarda zeminden kaldıran patlayıcı sırt küreği. Üst sırt gücü için idealdir.' },
+  { id: 'ex-142', name: 'Meadows Row', category: 'Sırt', description: 'Barın ucunu tek elle çeken unilateral sırt hareketi. Üst ve orta sırtı hedefler.' },
+  { id: 'ex-143', name: 'Seal Row', category: 'Sırt', description: 'Yüksek sehpada yüzüstü yatarak yapılan dambıl sırt küreği. Momentum tamamen ortadan kalkar.' },
+  { id: 'ex-144', name: 'Wide Grip Pull-Up', category: 'Sırt', description: 'Geniş tutuşla yapılan barfiks. Kanat kaslarının (lat) genişliğini maksimum çalıştırır.' },
+  { id: 'ex-145', name: 'Neutral Grip Pull-Up', category: 'Sırt', description: 'Avuç içleri karşı karşıya (nötral) tutuşla yapılan barfiks. Biceps ve kanat kaslarını dengeli çalıştırır.' },
+  { id: 'ex-146', name: 'Barbell Good Morning', category: 'Sırt', description: 'Barbeli sırtta tutarak öne eğilen egzersiz. Bel kasları ve hamstringleri kuvvetlendirir.' },
+  { id: 'ex-147', name: 'Cable Straight Arm Pulldown', category: 'Sırt', description: 'Kollar düz tutularak kablonun aşağı çekildiği kanat izole egzersizi.' },
+  { id: 'ex-148', name: 'Trap Bar Deadlift', category: 'Sırt', description: 'Altıgen barlı deadlift. Bel üzerindeki stresi azaltır, kuadriseps ve kalça kaslarını daha dengeli çalıştırır.' },
+  { id: 'ex-149', name: 'Barbell Shrug', category: 'Sırt', description: 'Barbell ile omuz silkme. Üst trapez kaslarını hedefleyen temel egzersiz.' },
+  { id: 'ex-150', name: 'Dumbbell Pullover (Back Focus)', category: 'Sırt', description: 'Sehpada yatarak dambılı baş arkasından çekerek kanat kaslarını esnetme odaklı sırt hareketi.' },
+
+  // Bacak (Legs) - Genişletilmiş
+  { id: 'ex-151', name: 'Sissy Squat', category: 'Bacak', description: 'Topuklar yükseltilmiş şekilde geriye yatarak yapılan yoğun kuadriseps izole egzersizi.' },
+  { id: 'ex-152', name: 'Reverse Lunge', category: 'Bacak', description: 'Geriye adım atarak yapılan lunge. Diz üzerindeki stresi azaltır, glute ve hamstringleri vurgular.' },
+  { id: 'ex-153', name: 'Lateral Lunge', category: 'Bacak', description: 'Yana adım atarak yapılan lunge. İç bacak, kalça ve kuadriseps kaslarını çalıştırır.' },
+  { id: 'ex-154', name: 'Curtsy Lunge', category: 'Bacak', description: 'Ayağı arkaya çapraz atarak yapılan lunge. Glute medius ve kuadriseps kaslarını hedefler.' },
+  { id: 'ex-155', name: 'Landmine Squat', category: 'Bacak', description: 'Bar ucuyla yapılan squat varyasyonu. Bel üzerindeki yükü azaltırken kuadrisepsleri hedefler.' },
+  { id: 'ex-156', name: 'Pause Squat', category: 'Bacak', description: 'Dipte birkaç saniye beklenerek yapılan squat. Esneme-kısalma döngüsünü ortadan kaldırır, güç ve kasılma kapasitesini artırır.' },
+  { id: 'ex-157', name: 'Single Leg Romanian Deadlift', category: 'Bacak', description: 'Tek bacak üzerinde yapılan Romanian deadlift. Denge ve unilateral hamstring gücü gerektirir.' },
+  { id: 'ex-158', name: 'Nordic Hamstring Curl', category: 'Bacak', description: 'Ayaklar sabitlenerek öne eğilip tutulan yoğun hamstring eksantrik egzersizi. Hamstring yaralanmalarına karşı koruyucudur.' },
+  { id: 'ex-159', name: 'Seated Leg Curl', category: 'Bacak', description: 'Oturarak makinede yapılan hamstring büküş egzersizi.' },
+  { id: 'ex-160', name: 'Jefferson Squat', category: 'Bacak', description: 'Barbeli bacakların arasından kaldıran asimetrik squat. Kalça ve bacak kaslarını farklı bir açıdan çalıştırır.' },
+  { id: 'ex-161', name: 'Safety Bar Squat', category: 'Bacak', description: 'Güvenlik barbeli ile yapılan squat. Bel ve omuz esnekliği gereksinimini azaltır.' },
+  { id: 'ex-162', name: 'Leg Press (Single Leg)', category: 'Bacak', description: 'Tek bacakla yapılan leg press. Güç asimetrilerini giderir.' },
+  { id: 'ex-163', name: 'Cable Pull-Through', category: 'Bacak', description: 'Kablo yardımıyla kalça itişi hareketi. Glute ve hamstring kaslarını aktive eder.' },
+  { id: 'ex-164', name: 'Kettlebell Goblet Squat', category: 'Bacak', description: 'Kettlebell ile goblet squat. Derin çömelme pozisyonunu kolaylaştırır.' },
+
+  // Omuz (Shoulders) - Genişletilmiş
+  { id: 'ex-165', name: 'Single Arm Cable Lateral Raise', category: 'Omuz', description: 'Kablo makinesinde tek kol yana açış. Sabit direnç ile yan omuz liflerini izole eder.' },
+  { id: 'ex-166', name: 'Landmine Press (Shoulder)', category: 'Omuz', description: 'Bar ucuyla yapılan başüstü omuz presi. Ön omuz ve üst göğsü çalıştırır.' },
+  { id: 'ex-167', name: 'Plate Lateral Raise', category: 'Omuz', description: 'Ağırlık plakasıyla yapılan yana açış. Yan omuz başlarını izole eder.' },
+  { id: 'ex-168', name: 'Band Pull-Apart', category: 'Omuz', description: 'Direnç bandını iki elinizle tutarak yanlara doğru gererek yapılan arka omuz ve üst sırt egzersizi.' },
+  { id: 'ex-169', name: 'Cable Rear Delt Fly', category: 'Omuz', description: 'Kablo çaprazlamasında arka omuz kaslarını çalıştıran açış hareketi.' },
+  { id: 'ex-170', name: 'Leaning Lateral Raise', category: 'Omuz', description: 'Yana doğru eğilerek yapılan kablo yana açış. Yan omuz kasını tam hareket açıklığında çalıştırır.' },
+  { id: 'ex-171', name: 'Dumbbell Y-T-W Raise', category: 'Omuz', description: 'Eğik sehpada Y, T ve W şekilleri oluşturarak yapılan alt trapez ve arka omuz egzersizi.' },
+  { id: 'ex-172', name: 'Seated Machine Shoulder Press', category: 'Omuz', description: 'Oturarak makinede yapılan başüstü omuz presi. Stabilizasyon gerektirmez.' },
+  { id: 'ex-173', name: 'Push Press', category: 'Omuz', description: 'Diz bükümü yardımıyla momentum kazanılan barbell başüstü pres. Güç ve patlayıcılık geliştirir.' },
+
+  // Kol (Arms) - Genişletilmiş
+  { id: 'ex-174', name: 'Zottman Curl', category: 'Kol', description: 'Yukarıda normal tutuşta, aşağıda ters tutuşta yapılan dambıl curl. Hem biceps hem de ön kol kaslarını çalıştırır.' },
+  { id: 'ex-175', name: 'Cross Body Hammer Curl', category: 'Kol', description: 'Dambılı vücudun karşı tarafına doğru çeken hammer curl varyasyonu. Brachialis kasını yoğun çalıştırır.' },
+  { id: 'ex-176', name: 'Cable Curl (Straight Bar)', category: 'Kol', description: 'Kablo makinesinde düz barla yapılan bicep curl. Sabit gerilim sağlar.' },
+  { id: 'ex-177', name: 'Single Arm Cable Curl', category: 'Kol', description: 'Kablo makinesinde tek kolla yapılan izole bicep curl.' },
+  { id: 'ex-178', name: 'Pin Wheel Curl', category: 'Kol', description: 'Dambılı çarkıfelek gibi vücudun yanından geçirerek yapılan ön kol büküşü.' },
+  { id: 'ex-179', name: 'Triceps Parallel Bar Dips', category: 'Kol', description: 'Paralel barlarda dik duruşla yapılan triceps odaklı dips hareketi.' },
+  { id: 'ex-180', name: 'Diamond Push-Up', category: 'Kol', description: 'Ellerle elmas şekli oluşturularak yapılan şınav. Triceps kaslarını yoğun çalıştırır.' },
+  { id: 'ex-181', name: 'JM Press', category: 'Kol', description: 'Skullcrusher ve close grip bench pressin hibridi olan triceps güç egzersizi.' },
+  { id: 'ex-182', name: 'Tate Press', category: 'Kol', description: 'Dambılların dirsek üzerinde kıvrıldığı triceps izole egzersizi.' },
+  { id: 'ex-183', name: 'Lying Dumbbell Tricep Extension', category: 'Kol', description: 'Sehpada yatarak dambılları baş arkasına indirip kaldıran triceps uzatma hareketi.' },
+  { id: 'ex-184', name: 'One Arm Overhead Tricep Extension', category: 'Kol', description: 'Tek dambıl ile tek kol başüstü triceps extension. Uzun başı tam esneme ile çalıştırır.' },
+  { id: 'ex-185', name: 'Reverse Curl', category: 'Kol', description: 'Ters tutuşla (avuçlar aşağı) yapılan barbell veya dambıl curl. Brachioradialis ve ön kol kaslarını hedefler.' },
+  { id: 'ex-186', name: 'Wrist Roller', category: 'Kol', description: 'Bileği döndürerek ağırlık asılı ipi makara üstüne saran ön kol dayanıklılık egzersizi.' },
+  { id: 'ex-187', name: 'Seated Alternating Dumbbell Curl', category: 'Kol', description: 'Oturarak sırayla sağ ve sol kolla yapılan dambıl bicep curl.' },
+
+  // Karın (Core) - Genişletilmiş
+  { id: 'ex-188', name: 'L-Sit Hold', category: 'Karın', description: 'Paralel barlarda veya zeminde kolları düz tutarak gövdeyi ve bacakları yatay pozisyonda sabit tutma. İleri düzey core gücü gerektirir.' },
+  { id: 'ex-189', name: 'Dragon Flag', category: 'Karın', description: 'Sehpa kenarını tutarak tüm vücudu düz bir çubuk gibi yukarı kaldıran Bruce Lee\'ye atfedilen ileri düzey core hareketi.' },
+  { id: 'ex-190', name: 'Hollow Body Hold', category: 'Karın', description: 'Sırtüstü yatarak bel zemine değmeyecek şekilde kol ve bacakları uzatarak tutulan izometrik core egzersizi.' },
+  { id: 'ex-191', name: 'V-Up', category: 'Karın', description: 'Sırtüstü yatarak aynı anda kol ve bacakları yukarı kaldırıp birbirine yaklaştıran tam karın egzersizi.' },
+  { id: 'ex-192', name: 'Reverse Crunch', category: 'Karın', description: 'Sırtüstü yatarak dizleri göğse doğru çekip kalçayı yerden kaldıran alt karın egzersizi.' },
+  { id: 'ex-193', name: 'Oblique Crunch', category: 'Karın', description: 'Yan yatış pozisyonunda yapılan mekik. Yan karın (oblik) kaslarını izole eder.' },
+  { id: 'ex-194', name: 'Pallof Press', category: 'Karın', description: 'Kablo makinesinde rotasyona direnç göstererek yapılan anti-rotasyon core stabilizasyon egzersizi.' },
+  { id: 'ex-195', name: 'Suitcase Carry', category: 'Karın', description: 'Tek elde ağırlık taşıyarak yürüme. Lateral core stabilitesini ve fonksiyonel gücü geliştirir.' },
+  { id: 'ex-196', name: 'Farmer\'s Walk', category: 'Karın', description: 'Her iki elde ağır ağırlıklarla yürüme. Genel kavrama gücü, core stabilizasyon ve kondisyon sağlar.' },
+  { id: 'ex-197', name: 'Copenhagen Plank', category: 'Karın', description: 'Sehpa üzerinde ayağı yan olarak destekleyerek yapılan ileri düzey yan plank. Kalça addüktörlerini ve oblik kasları güçlendirir.' },
+  { id: 'ex-198', name: 'Stir The Pot', category: 'Karın', description: 'Dirsekleri egzersiz topunun üzerinde dairesel hareketle döndürerek yapılan dinamik plank. Core stabilitesini güçlendirir.' },
+  { id: 'ex-199', name: 'Swiss Ball Crunch', category: 'Karın', description: 'Egzersiz topu üzerinde sırtüstü uzanarak yapılan mekik. Tam hareket açıklığı sağlar.' },
+  { id: 'ex-200', name: 'Windshield Wiper', category: 'Karın', description: 'Sırtüstü yatarak bacakları bir silecek gibi yanlara indirip kaldıran oblik ve kalça fleksör egzersizi.' },
+
+  // Kardiyo (Cardio) - Genişletilmiş
+  { id: 'ex-201', name: 'Box Jump', category: 'Kardiyo', description: 'Kutuya sıçrama egzersizi. Patlayıcı bacak gücü ve atletizm geliştirir.' },
+  { id: 'ex-202', name: 'Sprint Intervals', category: 'Kardiyo', description: 'Kısa mesafelerde maksimum hızda koşu aralıkları. HIIT kondisyon ve yağ yakımı için etkilidir.' },
+  { id: 'ex-203', name: 'Jump Squat', category: 'Kardiyo', description: 'Squat pozisyonundan patlayıcı sıçrama. Bacak gücü ve kardiyo kapasitesini eş zamanlı geliştirir.' },
+  { id: 'ex-204', name: 'High Knees', category: 'Kardiyo', description: 'Yerinde koşarken dizleri bel hizasına kadar yüksek kaldırma egzersizi. Kardiyo ve core aktivasyonu sağlar.' },
+  { id: 'ex-205', name: 'Jumping Jacks', category: 'Kardiyo', description: 'Ayakları açıp kapayarak kolları eş zamanlı aşağı ve yukarı hareket ettiren ısınma ve kardiyo egzersizi.' },
+  { id: 'ex-206', name: 'Sled Pull', category: 'Kardiyo', description: 'Ağırlıklı kızağı ip veya askıyla kendine doğru çekme. Sırt, kollar ve bacakları güçlendirirken kardiyo kondisyonu sağlar.' },
+  { id: 'ex-207', name: 'Tire Flip', category: 'Kardiyo', description: 'Büyük lastiği yerden kaldırıp ileriye doğru devirme. Tüm vücut patlayıcı gücünü ve kardiyoyu çalıştırır.' },
+  { id: 'ex-208', name: 'Swimming', category: 'Kardiyo', description: 'Havuzda veya açık suda yüzme. Düşük eklem yüklü, tüm vücudu çalıştıran dayanıklılık egzersizi.' },
+  { id: 'ex-209', name: 'Cycling (Outdoor)', category: 'Kardiyo', description: 'Açık havada bisiklet sürme. Bacak dayanıklılığı ve kardiyovasküler sağlık için etkilidir.' },
+  { id: 'ex-210', name: 'Walking', category: 'Kardiyo', description: 'Orta tempo yürüyüş. Günlük NEAT aktivitesini artırır ve düşük yoğunluklu kardiyo sağlar.' },
+  { id: 'ex-211', name: 'HIIT Circuit', category: 'Kardiyo', description: 'Yüksek yoğunluklu aralık antrenman devresi. Birden fazla egzersizi arka arkaya dinlenmesiz yaparak kalori yakımını maksimize eder.' },
+  { id: 'ex-212', name: 'Ski Erg', category: 'Kardiyo', description: 'Kayak simülatörü makinesinde çift kollu aşağı çekiş hareketi. Üst vücut ve kardiyo kapasitesini geliştirir.' },
+  { id: 'ex-213', name: 'Versa Climber', category: 'Kardiyo', description: 'Tırmanma simülatöründe karşılıklı kol ve bacak hareketi. Yüksek yoğunluklu tüm vücut kardiyo egzersizi.' },
+  { id: 'ex-214', name: 'Depth Jump', category: 'Kardiyo', description: 'Kutudan inerek anında sıçrama. Reaktif kuvvet ve patlayıcı bacak gücü geliştirir.' },
+  { id: 'ex-215', name: 'Lateral Bound', category: 'Kardiyo', description: 'Yana doğru tek bacakla sıçrayıp karşı tarafta iniş yapılan pliometrik egzersiz. Lateral güç ve denge geliştirir.' },
+
+  // Bacak İzolasyon & Kalça (Leg Isolation & Glute)
+  { id: 'ex-216', name: 'Hip Abduction Machine (Bacak Yana Açış)', category: 'Bacak', description: 'Makinede oturarak bacakları yana açma hareketi. Kalça ortası (glute medius) ve dış bacak kaslarını izole eder.' },
+  { id: 'ex-217', name: 'Hip Adduction Machine (Bacak İçe Kapama)', category: 'Bacak', description: 'Makinede oturarak bacakları içe kapatma hareketi. İç bacak kaslarını (adductors) izole eder.' },
+  { id: 'ex-218', name: 'Cable Hip Abduction (Kablo Yana Açış)', category: 'Bacak', description: 'Kablo makinesine ayak bileği aparatı takarak bacağı yana doğru kaldırma. Dış kalça kaslarını çalıştırır.' },
+  { id: 'ex-219', name: 'Cable Hip Adduction (Kablo İçe Kapama)', category: 'Bacak', description: 'Kablo makinesine ayak bileği aparatı takarak bacağı içe doğru çekme. İç bacak kaslarını hedefler.' },
+  { id: 'ex-220', name: 'Lateral Band Walk (Yan Bant Yürüyüşü)', category: 'Bacak', description: 'Dizlere veya ayak bileklerine direnç bandı takarak yana doğru yürüme. Glute medius aktivasyonu için idealdir.' },
+  { id: 'ex-221', name: 'Clamshell (Deniz Kabuğu)', category: 'Bacak', description: 'Yan yatışta dizleri büküp ayakları kapalı tutarak üst dizi yukarı kaldırma. Glute medius ve dış rotator kasları çalıştırır.' },
+  { id: 'ex-222', name: 'Glute Bridge', category: 'Bacak', description: 'Sırtüstü yatarak kalçayı yukarı kaldırma hareketi. Glute kaslarını ve hamstringleri aktive eder.' },
+  { id: 'ex-223', name: 'Single Leg Glute Bridge', category: 'Bacak', description: 'Tek bacak ile yapılan kalça köprüsü. Unilateral glute gücünü ve kalça stabilitesini geliştirir.' },
+  { id: 'ex-224', name: 'Fire Hydrant', category: 'Bacak', description: 'Dört ayaklı pozisyonda bacağı yana kaldırma hareketi. Glute medius ve kalça dış rotatorlarını aktive eder.' },
+  { id: 'ex-225', name: 'Donkey Kick (Eşek Tekme)', category: 'Bacak', description: 'Dört ayaklı pozisyonda bacağı geriye ve yukarı itme. Glute maksimus kasını izole eder.' },
+  { id: 'ex-226', name: 'Cable Kickback (Kablo Glute Kickback)', category: 'Bacak', description: 'Kablo makinesine ayak bileği aparatı takarak bacağı geriye doğru itme. Glute kasını yoğun izole eder.' },
+  { id: 'ex-227', name: 'Frog Pump', category: 'Bacak', description: 'Sırtüstü yatarak ayak tabanlarını birbirine değdirip kalçayı yukarı pompalama. Glute medius ve maksimus için etkilidir.' },
+  { id: 'ex-228', name: 'Sumo Squat', category: 'Bacak', description: 'Geniş duruşla ve ayak parmakları dışa bakacak şekilde yapılan squat. İç bacak ve kalça kaslarını daha fazla çalıştırır.' },
+  { id: 'ex-229', name: 'Curtsy Lunge with Lateral Raise', category: 'Bacak', description: 'Çapraz lunge yaparken yana dambıl açışı yapılan bileşik hareket. Glute medius ve lateral head omuz kaslarını aynı anda çalıştırır.' },
+  { id: 'ex-230', name: 'Seated Hip Abduction (Band)', category: 'Bacak', description: 'Oturarak dizlerin üstüne yerleştirilen direnç bandıyla bacakları yana açma. Glute medius için etkili bir ısınma ve izolasyon hareketi.' },
+  { id: 'ex-231', name: 'Standing Hip Abduction (Band)', category: 'Bacak', description: 'Ayakta direnç bandıyla bacağı yana kaldırma. Denge ve kalça dış kaslarını çalıştırır.' },
+  { id: 'ex-232', name: 'Monster Walk', category: 'Bacak', description: 'Ayak bileklerine bant takarak öne ve yana çapraz adımlar atma. Kalça dış kaslarını ve glute mediusu aktive eder.' },
+  { id: 'ex-233', name: 'Abductor Stretch (Kalça Dış Kasları Germe)', category: 'Bacak', description: 'Kalça dış kaslarını ve IT bandını esneten statik germe egzersizi.' },
+  { id: 'ex-234', name: 'Adductor Stretch (İç Bacak Germe)', category: 'Bacak', description: 'Bacak açık oturarak ya da duvarla iç bacak kaslarını esneten statik germe egzersizi.' },
+
+  // Ek Bacak Hareketleri
+  { id: 'ex-235', name: 'Leg Extension (Single Leg)', category: 'Bacak', description: 'Tek bacakla yapılan leg extension. Kuadriseps kaslarındaki güç asimetrilerini giderir.' },
+  { id: 'ex-236', name: 'Standing Leg Curl', category: 'Bacak', description: 'Ayakta makinede tek bacakla yapılan hamstring büküş egzersizi.' },
+  { id: 'ex-237', name: 'Hack Squat (45°)', category: 'Bacak', description: '45 derece hack squat makinesinde yapılan çömelme hareketi. Kuadriseps ve kalçayı dengeli çalıştırır.' },
+  { id: 'ex-238', name: 'Smith Machine Hip Thrust', category: 'Bacak', description: 'Smith makinesi barıyla yapılan kalça itişi. Ağırlık kontrolü ve güvenlik açısından avantajlıdır.' },
+  { id: 'ex-239', name: 'Dumbbell Hip Thrust', category: 'Bacak', description: 'Dambıl ile yapılan kalça itişi. Makine yokken alternatif olarak kullanılır.' },
+  { id: 'ex-240', name: 'B-Stance Hip Thrust', category: 'Bacak', description: 'Bir ayak önde, bir ayak hafif geride tutularak yapılan kalça itişi. Unilateral glute aktivasyonu sağlar.' }
 ];
 
 export const INITIAL_PROGRAMS: WorkoutProgram[] = [
@@ -610,19 +736,24 @@ export const getExercises = (): Exercise[] => {
     localStorage.setItem('aurafit_exercises', JSON.stringify(INITIAL_EXERCISES));
     return INITIAL_EXERCISES;
   }
-  
-  const existing: Exercise[] = JSON.parse(data);
+
+  let existing: Exercise[];
+  try {
+    existing = JSON.parse(data);
+  } catch {
+    localStorage.removeItem('aurafit_exercises');
+    return INITIAL_EXERCISES;
+  }
+
   const existingIds = new Set(existing.map(ex => ex.id));
-  
-  // Find any missing default exercises
   const missing = INITIAL_EXERCISES.filter(ex => !existingIds.has(ex.id));
-  
+
   if (missing.length > 0) {
     const updated = [...existing, ...missing];
     localStorage.setItem('aurafit_exercises', JSON.stringify(updated));
     return updated;
   }
-  
+
   return existing;
 };
 
@@ -636,8 +767,14 @@ export const getPrograms = (): WorkoutProgram[] => {
     localStorage.setItem('aurafit_programs', JSON.stringify(INITIAL_PROGRAMS));
     return INITIAL_PROGRAMS;
   }
-  
-  let existing: WorkoutProgram[] = JSON.parse(data);
+
+  let existing: WorkoutProgram[];
+  try {
+    existing = JSON.parse(data);
+  } catch {
+    localStorage.removeItem('aurafit_programs');
+    return INITIAL_PROGRAMS;
+  }
   const oldIds = ['prog-1', 'prog-2', 'prog-3', 'prog-4'];
   const hasOldDefaults = existing.some(p => oldIds.includes(p.id));
   
@@ -687,7 +824,12 @@ export const getHistory = (): CompletedWorkout[] => {
     localStorage.setItem('aurafit_history', JSON.stringify(defaultHistory));
     return defaultHistory;
   }
-  return JSON.parse(data);
+  try {
+    return JSON.parse(data);
+  } catch {
+    localStorage.removeItem('aurafit_history');
+    return [];
+  }
 };
 
 export const saveHistory = (history: CompletedWorkout[]): void => {
@@ -696,7 +838,13 @@ export const saveHistory = (history: CompletedWorkout[]): void => {
 
 export const getWeightLogs = (): WeightLog[] => {
   const data = localStorage.getItem('aurafit_weight_logs');
-  return data ? JSON.parse(data) : [];
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    localStorage.removeItem('aurafit_weight_logs');
+    return [];
+  }
 };
 
 export const saveWeightLogs = (logs: WeightLog[]): void => {
@@ -705,7 +853,13 @@ export const saveWeightLogs = (logs: WeightLog[]): void => {
 
 export const getPersonalRecords = (): PersonalRecord[] => {
   const data = localStorage.getItem('aurafit_personal_records');
-  return data ? JSON.parse(data) : [];
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    localStorage.removeItem('aurafit_personal_records');
+    return [];
+  }
 };
 
 export const savePersonalRecords = (prs: PersonalRecord[]): void => {
@@ -714,7 +868,13 @@ export const savePersonalRecords = (prs: PersonalRecord[]): void => {
 
 export const getPublicPrograms = (): any[] => {
   const data = localStorage.getItem('aurafit_public_programs');
-  return data ? JSON.parse(data) : [];
+  if (!data) return [];
+  try {
+    return JSON.parse(data);
+  } catch {
+    localStorage.removeItem('aurafit_public_programs');
+    return [];
+  }
 };
 
 export const savePublicPrograms = (programs: any[]): void => {

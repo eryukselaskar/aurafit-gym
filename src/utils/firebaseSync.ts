@@ -23,9 +23,11 @@ export const syncExercises = async (userId: string): Promise<Exercise[]> => {
   const snap = await getDocs(colRef);
   
   const customExercises = snap.docs.map(d => d.data() as Exercise);
-  
-  // Return custom exercises merged with static defaults to avoid 61 redundant Firestore writes on signup.
-  return [...customExercises, ...INITIAL_EXERCISES];
+
+  // Merge with defaults, skipping any default whose ID was already stored in Firestore
+  const customIds = new Set(customExercises.map(e => e.id));
+  const defaultsToAdd = INITIAL_EXERCISES.filter(e => !customIds.has(e.id));
+  return [...customExercises, ...defaultsToAdd];
 };
 
 export const syncSaveExercise = async (userId: string, exercise: Exercise): Promise<void> => {

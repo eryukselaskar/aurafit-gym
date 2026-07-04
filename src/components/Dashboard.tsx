@@ -64,7 +64,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   const activeStreak = calculateStreak();
 
-  const latestWeightLog = weightLogs && weightLogs.length > 0 ? weightLogs[0] : null;
+  const latestWeightLog = weightLogs && weightLogs.length > 0
+    ? [...weightLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+    : null;
 
   // Fallback: If personalRecords is empty, calculate them dynamically from history based on max weight
   const displayPRs = personalRecords.length > 0 ? personalRecords : (() => {
@@ -243,7 +245,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {history.length === 0 ? (
               <p className="no-history-msg">Henüz tamamlanan antrenman bulunmuyor. İlk antrenmanını tamamla!</p>
             ) : (
-              [...history].slice(0, 3).map((workout) => (
+              [...history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 3).map((workout) => (
                 <div key={workout.id} className="recent-workout-row">
                   <div className="recent-workout-left">
                     <div className="recent-workout-icon">

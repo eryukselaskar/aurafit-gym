@@ -5,9 +5,17 @@ interface LoginScreenProps {
   onGoogleSignIn: () => void;
   onGuestContinue: () => void;
   isLoading: boolean;
+  isWaitingForBrowser?: boolean;
+  onCancelWaiting?: () => void;
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ onGoogleSignIn, onGuestContinue, isLoading }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ 
+  onGoogleSignIn, 
+  onGuestContinue, 
+  isLoading,
+  isWaitingForBrowser = false,
+  onCancelWaiting
+}) => {
   return (
     <div className="login-screen-container">
       <div className="login-card glass-panel anim-slide-up">
@@ -56,6 +64,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onGoogleSignIn, onGues
         </div>
       </div>
 
+      {isWaitingForBrowser && (
+        <div className="waiting-browser-overlay">
+          <div className="waiting-browser-card glass-panel anim-scale-up">
+            <div className="browser-icon-wrapper">
+              <Sparkles className="browser-pulsing-icon" size={36} />
+            </div>
+            <h2>AuraFit Tarayıcıda Açıldı</h2>
+            <p>
+              Giriş işlemi için tarayıcınızda yeni bir sekme açıldı. 
+              Giriş yaptıktan sonra AuraFit'i tarayıcınız üzerinden kullanmaya devam edebilirsiniz. 
+              Bu masaüstü uygulamasını kapatabilirsiniz.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '10px', marginTop: '20px' }}>
+              <button 
+                onClick={onCancelWaiting} 
+                className="btn btn-secondary cancel-waiting-btn"
+                style={{ width: '100%' }}
+              >
+                Geri Dön
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         .login-screen-container {
           display: flex;
@@ -66,6 +99,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onGoogleSignIn, onGues
           background: radial-gradient(circle at center, rgba(139, 92, 246, 0.15) 0%, #090a0f 70%);
           padding: 20px;
           overflow: hidden;
+          position: relative;
         }
 
         .login-card {
@@ -153,10 +187,84 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onGoogleSignIn, onGues
           width: 100%;
         }
 
+        .waiting-browser-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(9, 10, 15, 0.95);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 9999;
+          padding: 20px;
+        }
+
+        .waiting-browser-card {
+          width: 100%;
+          max-width: 380px;
+          padding: 40px 30px;
+          border-radius: var(--radius-lg);
+          background: rgba(13, 15, 23, 0.9);
+          border: 1px solid var(--border-medium);
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), var(--shadow-glow);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          gap: 20px;
+        }
+
+        .browser-icon-wrapper {
+          width: 70px;
+          height: 70px;
+          border-radius: 50%;
+          background: rgba(139, 92, 246, 0.08);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid rgba(139, 92, 246, 0.3);
+          margin-bottom: 8px;
+        }
+
+        .browser-pulsing-icon {
+          color: var(--accent-pink);
+          filter: drop-shadow(0 0 10px var(--accent-pink));
+          animation: pulseIcon 2.5s infinite ease-in-out;
+        }
+
+        .pulse-loader {
+          width: 48px;
+          height: 48px;
+          border: 3px solid rgba(139, 92, 246, 0.1);
+          border-radius: 50%;
+          border-top-color: var(--accent-violet);
+          animation: spin 1s ease-in-out infinite;
+          margin: 10px 0;
+        }
+
+        .cancel-waiting-btn {
+          margin-top: 10px;
+          width: 100%;
+          padding: 12px 20px;
+        }
+
         @keyframes logoPulse {
           0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.2); }
           50% { transform: scale(1.05); box-shadow: 0 0 20px 5px rgba(139, 92, 246, 0.1); }
           100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.2); }
+        }
+
+        @keyframes pulseIcon {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.1); filter: drop-shadow(0 0 15px var(--accent-pink)); }
+          100% { transform: scale(1); }
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
 
         @media (max-width: 480px) {

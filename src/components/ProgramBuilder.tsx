@@ -1,7 +1,102 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2, Edit2, ChevronLeft, Save, Sparkles, BookOpen, AlertCircle, PlusCircle, X, Play, GripVertical } from 'lucide-react';
 import type { WorkoutProgram, Exercise, WorkoutExercise, WorkoutSet, WorkoutSession } from '../types';
+import { DndContext, closestCenter } from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
+
+interface SortableExCardProps {
+  ex: WorkoutExercise;
+  exIdx: number;
+  onRemove: () => void;
+  onRestChange: (v: number) => void;
+  onMinRepsChange: (v: number | undefined) => void;
+  onMaxRepsChange: (v: number | undefined) => void;
+  onNotesChange: (v: string) => void;
+  onSetChange: (setIdx: number, field: 'reps' | 'weight' | 'rir', value: number) => void;
+  onAddSet: () => void;
+  onRemoveSet: (setIdx: number) => void;
+}
+
+const SortableExerciseCard: React.FC<SortableExCardProps> = ({
+  ex, onRemove, onRestChange, onMinRepsChange, onMaxRepsChange, onNotesChange, onSetChange, onAddSet, onRemoveSet
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ex.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+
+  return (
+    <div ref={setNodeRef} style={style} className={`builder-exercise-card glass-panel ${isDragging ? 'dragging' : ''}`}>
+      <div className="builder-card-top">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div
+            className="drag-handle"
+            style={{ cursor: 'grab', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', touchAction: 'none' }}
+            title="Sürükle ve Bırak"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical size={18} />
+          </div>
+          <div>
+            <h4 className="builder-ex-name" style={{ margin: 0 }}>{ex.name}</h4>
+            <span className="badge badge-cyan" style={{ marginTop: '2px', display: 'inline-block' }}>{ex.category}</span>
+          </div>
+        </div>
+        <button onClick={onRemove} className="btn-remove-ex">
+          <Trash2 size={16} />
+        </button>
+      </div>
+
+      <div className="builder-card-settings" style={{ display: 'flex', gap: '15px', alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
+        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
+          <label className="form-label">Dinlenme (sn)</label>
+          <input type="number" min="10" max="300" step="10" value={ex.restTime}
+            onChange={(e) => onRestChange(parseInt(e.target.value) || 60)} className="form-input mini-input" />
+        </div>
+        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
+          <label className="form-label">Min Tekrar</label>
+          <input type="number" min="1" max="100" placeholder="Min" value={ex.minReps || ''}
+            onChange={(e) => onMinRepsChange(parseInt(e.target.value) || undefined)} className="form-input mini-input" style={{ width: '65px' }} />
+        </div>
+        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
+          <label className="form-label">Max Tekrar</label>
+          <input type="number" min="1" max="100" placeholder="Max" value={ex.maxReps || ''}
+            onChange={(e) => onMaxRepsChange(parseInt(e.target.value) || undefined)} className="form-input mini-input" style={{ width: '65px' }} />
+        </div>
+        <div className="form-group inline-group" style={{ flexGrow: 1, display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <label className="form-label" style={{ whiteSpace: 'nowrap' }}>Koçun Notu</label>
+          <input type="text" placeholder="Örn: RIR 1 - duraksamalı tempo" value={ex.notes || ''}
+            onChange={(e) => onNotesChange(e.target.value)} className="form-input" style={{ flexGrow: 1, minWidth: '150px' }} />
+        </div>
+      </div>
+
+      <div className="builder-sets-list">
+        <div className="sets-header-labels">
+          <span>Set</span><span>Hedef Tekrar</span><span>Ağırlık (kg)</span><span>Hedef RIR</span><span></span>
+        </div>
+        {ex.sets.map((set, setIdx) => (
+          <div key={set.id} className="builder-set-row">
+            <span className="set-number-label">{setIdx + 1}</span>
+            <input type="number" min="1" max="100" value={set.reps}
+              onChange={(e) => onSetChange(setIdx, 'reps', parseInt(e.target.value) || 0)} className="form-input mini-input" />
+            <input type="number" min="0" max="500" step="0.5" value={set.weight}
+              onChange={(e) => onSetChange(setIdx, 'weight', parseFloat(e.target.value) || 0)} className="form-input mini-input" />
+            <input type="number" min="0" max="10" placeholder="RIR" value={set.rir !== undefined ? set.rir : 2}
+              onChange={(e) => onSetChange(setIdx, 'rir', parseInt(e.target.value) || 0)} className="form-input mini-input" />
+            <button onClick={() => onRemoveSet(setIdx)} disabled={ex.sets.length <= 1} className="btn-delete-set">
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <button onClick={onAddSet} className="btn-add-set-row">
+        <PlusCircle size={14} /> Set Ekle
+      </button>
+    </div>
+  );
+};
 
 interface ProgramBuilderProps {
   programs: WorkoutProgram[];
@@ -38,57 +133,32 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
   const [programSessions, setProgramSessions] = useState<WorkoutSession[]>([]);
   const [activeSessionIndex, setActiveSessionIndex] = useState(0);
 
-  // Drag and drop reordering states and handlers
-  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
-  const dragItemIndex = useRef<number | null>(null);
-  const dragOverItemIndex = useRef<number | null>(null);
+  // DnD kit reordering
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
-  const handleDragStart = (e: React.DragEvent, index: number) => {
-    const target = e.target as HTMLElement;
-    if (
-      target.tagName === 'INPUT' || 
-      target.tagName === 'TEXTAREA' || 
-      target.tagName === 'BUTTON' || 
-      target.closest('.mini-input') || 
-      target.closest('button') || 
-      target.closest('.builder-sets-list')
-    ) {
-      e.preventDefault();
-      return;
-    }
-    dragItemIndex.current = index;
-    setDraggedIdx(index);
-    e.dataTransfer.effectAllowed = 'move';
-  };
-
-  const handleDragEnter = (index: number) => {
-    dragOverItemIndex.current = index;
-  };
-
-  const handleDragEnd = () => {
-    if (dragItemIndex.current !== null && dragOverItemIndex.current !== null && dragItemIndex.current !== dragOverItemIndex.current) {
-      if (isBundleProgram) {
-        const updated = [...programSessions];
-        const session = updated[activeSessionIndex];
-        if (session) {
-          const list = [...session.exercises];
-          const draggedItem = list[dragItemIndex.current];
-          list.splice(dragItemIndex.current, 1);
-          list.splice(dragOverItemIndex.current, 0, draggedItem);
-          session.exercises = list;
+  const handleDndEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    if (isBundleProgram) {
+      const updated = [...programSessions];
+      const session = updated[activeSessionIndex];
+      if (session) {
+        const ids = session.exercises.map(ex => ex.id);
+        const oldIndex = ids.indexOf(active.id as string);
+        const newIndex = ids.indexOf(over.id as string);
+        if (oldIndex !== -1 && newIndex !== -1) {
+          session.exercises = arrayMove(session.exercises, oldIndex, newIndex);
           setProgramSessions(updated);
         }
-      } else {
-        const list = [...programExercises];
-        const draggedItem = list[dragItemIndex.current];
-        list.splice(dragItemIndex.current, 1);
-        list.splice(dragOverItemIndex.current, 0, draggedItem);
-        setProgramExercises(list);
+      }
+    } else {
+      const ids = programExercises.map(ex => ex.id);
+      const oldIndex = ids.indexOf(active.id as string);
+      const newIndex = ids.indexOf(over.id as string);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        setProgramExercises(arrayMove(programExercises, oldIndex, newIndex));
       }
     }
-    dragItemIndex.current = null;
-    dragOverItemIndex.current = null;
-    setDraggedIdx(null);
   };
 
   const handleCreateNew = () => {
@@ -322,11 +392,13 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
       const targetEx = updated[activeSessionIndex]?.exercises[exerciseIndex];
       if (!targetEx) return;
       targetEx.maxReps = value;
+      if (value !== undefined) targetEx.sets = targetEx.sets.map(s => ({ ...s, reps: value }));
       setProgramSessions(updated);
     } else {
       const updated = [...programExercises];
       if (updated[exerciseIndex]) {
         updated[exerciseIndex].maxReps = value;
+        if (value !== undefined) updated[exerciseIndex].sets = updated[exerciseIndex].sets.map(s => ({ ...s, reps: value }));
         setProgramExercises(updated);
       }
     }
@@ -553,144 +625,25 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                   </button>
                 </div>
               ) : (
-                activeExList.map((ex, exIdx) => (
-                  <div
-                    key={ex.id}
-                    className={`builder-exercise-card glass-panel ${draggedIdx === exIdx ? 'dragging' : ''}`}
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, exIdx)}
-                    onDragEnter={() => handleDragEnter(exIdx)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={(e) => e.preventDefault()}
-                  >
-                    <div className="builder-card-top">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div className="drag-handle" style={{ cursor: 'grab', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }} title="Sürükle ve Bırak">
-                          <GripVertical size={18} />
-                        </div>
-                        <div>
-                          <h4 className="builder-ex-name" style={{ margin: 0 }}>{ex.name}</h4>
-                          <span className="badge badge-cyan" style={{ marginTop: '2px', display: 'inline-block' }}>{ex.category}</span>
-                        </div>
-                      </div>
-                      <button onClick={() => handleRemoveExercise(exIdx)} className="btn-remove-ex">
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-
-                    <div className="builder-card-settings" style={{ display: 'flex', gap: '15px', alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
-                      <div className="form-group inline-group" style={{ flexShrink: 0 }}>
-                        <label className="form-label">Dinlenme (sn)</label>
-                        <input
-                          type="number"
-                          min="10"
-                          max="300"
-                          step="10"
-                          value={ex.restTime}
-                          onChange={(e) => handleRestChange(exIdx, parseInt(e.target.value) || 60)}
-                          className="form-input mini-input"
-                        />
-                      </div>
-                      <div className="form-group inline-group" style={{ flexShrink: 0 }}>
-                        <label className="form-label">Min Tekrar</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="100"
-                          placeholder="Min"
-                          value={ex.minReps || ''}
-                          onChange={(e) => handleMinRepsChange(exIdx, parseInt(e.target.value) || undefined)}
-                          className="form-input mini-input"
-                          style={{ width: '65px' }}
-                        />
-                      </div>
-                      <div className="form-group inline-group" style={{ flexShrink: 0 }}>
-                        <label className="form-label">Max Tekrar</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="100"
-                          placeholder="Max"
-                          value={ex.maxReps || ''}
-                          onChange={(e) => handleMaxRepsChange(exIdx, parseInt(e.target.value) || undefined)}
-                          className="form-input mini-input"
-                          style={{ width: '65px' }}
-                        />
-                      </div>
-                      <div className="form-group inline-group" style={{ flexGrow: 1, display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        <label className="form-label" style={{ whiteSpace: 'nowrap' }}>Koçun Notu</label>
-                        <input
-                          type="text"
-                          placeholder="Örn: RIR 1 - duraksamalı tempo"
-                          value={ex.notes || ''}
-                          onChange={(e) => handleNotesChange(exIdx, e.target.value)}
-                          className="form-input"
-                          style={{ flexGrow: 1, minWidth: '150px' }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Sets Editor */}
-                    <div className="builder-sets-list">
-                      <div className="sets-header-labels">
-                        <span>Set</span>
-                        <span>Hedef Tekrar</span>
-                        <span>Ağırlık (kg)</span>
-                        <span>Hedef RIR</span>
-                        <span></span>
-                      </div>
-
-                      {ex.sets.map((set, setIdx) => (
-                        <div key={set.id} className="builder-set-row">
-                          <span className="set-number-label">{setIdx + 1}</span>
-                          <input
-                            type="number"
-                            min="1"
-                            max="100"
-                            value={set.reps}
-                            onChange={(e) =>
-                              handleSetChange(exIdx, setIdx, 'reps', parseInt(e.target.value) || 0)
-                            }
-                            className="form-input mini-input"
-                          />
-                          <input
-                            type="number"
-                            min="0"
-                            max="500"
-                            step="0.5"
-                            value={set.weight}
-                            onChange={(e) =>
-                              handleSetChange(exIdx, setIdx, 'weight', parseFloat(e.target.value) || 0)
-                            }
-                            className="form-input mini-input"
-                          />
-                          <input
-                            type="number"
-                            min="0"
-                            max="10"
-                            placeholder="RIR"
-                            value={set.rir !== undefined ? set.rir : 2}
-                            onChange={(e) =>
-                              handleSetChange(exIdx, setIdx, 'rir', parseInt(e.target.value) || 0)
-                            }
-                            className="form-input mini-input"
-                          />
-                          <button
-                            onClick={() => handleRemoveSet(exIdx, setIdx)}
-                            disabled={ex.sets.length <= 1}
-                            className="btn-delete-set"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button onClick={() => handleAddSet(exIdx)} className="btn-add-set-row">
-                      <PlusCircle size={14} /> Set Ekle
-                    </button>
-                  </div>
-                ))
+                <DndContext collisionDetection={closestCenter} onDragEnd={handleDndEnd}>
+                  <SortableContext items={activeExList.map(ex => ex.id)} strategy={verticalListSortingStrategy}>
+                    {activeExList.map((ex, exIdx) => (
+                      <SortableExerciseCard
+                        key={ex.id}
+                        ex={ex}
+                        exIdx={exIdx}
+                        onRemove={() => handleRemoveExercise(exIdx)}
+                        onRestChange={(v) => handleRestChange(exIdx, v)}
+                        onMinRepsChange={(v) => handleMinRepsChange(exIdx, v)}
+                        onMaxRepsChange={(v) => handleMaxRepsChange(exIdx, v)}
+                        onNotesChange={(v) => handleNotesChange(exIdx, v)}
+                        onSetChange={(setIdx, field, value) => handleSetChange(exIdx, setIdx, field, value)}
+                        onAddSet={() => handleAddSet(exIdx)}
+                        onRemoveSet={(setIdx) => handleRemoveSet(exIdx, setIdx)}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
           </section>
@@ -1112,6 +1065,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
       : selectedProgramDetail.exercises.reduce((sum, e) => sum + e.sets.length, 0);
 
     return (
+      <>
       <div className="program-detail-view anim-slide-up" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         <header className="builder-header" style={{ gap: '20px' }}>
           <button onClick={() => setSelectedProgramDetail(null)} className="btn btn-secondary btn-icon">
@@ -1137,13 +1091,10 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
               <Edit2 size={16} style={{ marginRight: '6px' }} /> Düzenle
             </button>
             <button
-              onClick={() => {
-                const conf = window.confirm('Bu programı silmek istediğinize emin misiniz?');
-                if (conf) {
-                  deleteProgram(selectedProgramDetail.id);
-                  setSelectedProgramDetail(null);
-                }
-              }}
+              onClick={() => setConfirmModal({
+                message: 'Bu programı silmek istediğinize emin misiniz?',
+                onConfirm: () => { setConfirmModal(null); deleteProgram(selectedProgramDetail.id); setSelectedProgramDetail(null); }
+              })}
               className="btn btn-secondary btn-delete"
               style={{ color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.2)' }}
             >
@@ -1240,6 +1191,27 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
           </div>
         )}
       </div>
+
+      {confirmModal && (
+        <div className="pb-modal-backdrop" onClick={() => setConfirmModal(null)}>
+          <div className="pb-modal-box glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ fontSize: 16 }}>Emin misiniz?</h3>
+                <p style={{ marginTop: 8, lineHeight: 1.5, color: 'var(--text-secondary)', fontSize: 14 }}>{confirmModal.message}</p>
+              </div>
+              <button style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }} onClick={() => setConfirmModal(null)}><X size={20} /></button>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmModal(null)}>İptal</button>
+              <button className="btn btn-danger" style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`.pb-modal-backdrop { position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;z-index:2100; } .pb-modal-box { width:100%;max-width:400px;background:var(--bg-card-solid);border-top-left-radius:var(--radius-lg);border-top-right-radius:var(--radius-lg);padding:30px 24px calc(30px + env(safe-area-inset-bottom,0px)) 24px;box-shadow:0 -10px 40px rgba(0,0,0,0.5); }`}</style>
+      </>
     );
   }
 
@@ -1537,6 +1509,24 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
           }
         }
       `}</style>
+
+      {confirmModal && (
+        <div className="pb-modal-backdrop" onClick={() => setConfirmModal(null)}>
+          <div className="pb-modal-box glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ fontSize: 16 }}>Emin misiniz?</h3>
+                <p style={{ marginTop: 8, lineHeight: 1.5, color: 'var(--text-secondary)', fontSize: 14 }}>{confirmModal.message}</p>
+              </div>
+              <button style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }} onClick={() => setConfirmModal(null)}><X size={20} /></button>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmModal(null)}>İptal</button>
+              <button className="btn btn-danger" style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -38,10 +38,13 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
   const [activityLevel, setActivityLevel] = useState('1.55'); // moderately active
   const [calcWeight, setCalcWeight] = useState('75');
 
-  // Pre-fill calculator weight from the latest log
+  // Pre-fill calculator weight from the most recent log (sort by date descending)
   useEffect(() => {
     if (weightLogs.length > 0) {
-      setCalcWeight(weightLogs[0].weight.toString());
+      const sorted = [...weightLogs].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setCalcWeight(sorted[0].weight.toString());
     }
   }, [weightLogs]);
 

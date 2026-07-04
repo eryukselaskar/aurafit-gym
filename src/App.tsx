@@ -67,6 +67,7 @@ function App() {
   // Firebase Auth states
   const [userId, setUserId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isWaitingForBrowser, setIsWaitingForBrowser] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [continueAsGuest, setContinueAsGuest] = useState<boolean>(() => {
     try {
@@ -147,6 +148,7 @@ function App() {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      clearTimeout(fallbackTimeout);
       if (user) {
         setCurrentUser(user);
         setUserId(user.uid);
@@ -169,6 +171,85 @@ function App() {
     };
   }, []);
 
+  // Register Electron external browser auth callback
+  useEffect(() => {
+    (window as any).handleExternalAuth = async (credentials: {
+      uid: string;
+      email: string;
+      displayName: string | null;
+      photoURL: string | null;
+      idToken: string;
+    }) => {
+      try {
+        setIsLoading(true);
+        setIsWaitingForBrowser(false);
+        console.log("External browser login callback triggered. Logging in with credential...");
+        
+        // Capture local guest data BEFORE logging in (for in-memory backup)
+        const guestExercises = [...exercises];
+        const guestPrograms = [...programs];
+        const guestHistory = [...history];
+        const guestWeightLogs = [...weightLogs];
+        const guestPRs = [...personalRecords];
+
+        const credential = GoogleAuthProvider.credential(credentials.idToken);
+        const authResult = await signInWithCredential(auth, credential);
+        const resultUser = authResult.user;
+
+        console.log("Logged in with external Google credential:", resultUser);
+
+        // Perform post-login database sync/migration
+        const newUid = resultUser.uid;
+        const cloudProg = await syncPrograms(newUid);
+        const cloudHist = await syncHistory(newUid);
+
+        const isCloudNew = cloudProg.filter(p => p.id !== 'prog-ppl-bundle').length === 0 && cloudHist.length === 0;
+        const hasLocalData = guestPrograms.filter(p => p.id !== 'prog-ppl-bundle').length > 0 || guestHistory.length > 0 || guestWeightLogs.length > 0;
+
+        if (isCloudNew && hasLocalData) {
+          console.log("Migrating local guest data to Google Firestore account...");
+          
+          // Migrate custom exercises
+          const localCustomEx = guestExercises.filter(ex => ex.isCustom);
+          for (const ex of localCustomEx) {
+            await syncSaveExercise(newUid, ex);
+          }
+
+          // Migrate custom programs
+          const localCustomProgs = guestPrograms.filter(p => p.id !== 'prog-ppl-bundle');
+          for (const prog of localCustomProgs) {
+            await syncSaveProgram(newUid, prog);
+          }
+
+          // Migrate history
+          for (const h of guestHistory) {
+            await syncSaveHistory(newUid, h);
+          }
+
+          // Migrate weight logs
+          for (const log of guestWeightLogs) {
+            await syncSaveWeightLog(newUid, log);
+          }
+
+          // Migrate personal records
+          for (const pr of guestPRs) {
+            await syncSavePersonalRecord(newUid, pr);
+          }
+        }
+      } catch (err: any) {
+        console.error("External Google Sign-In failed:", err);
+        alert("Tarayıcı ile giriş yapılamadı: " + (err.message || err));
+      } finally {
+        setIsWaitingForBrowser(false);
+        setIsLoading(false);
+      }
+    };
+
+    return () => {
+      delete (window as any).handleExternalAuth;
+    };
+  }, [exercises, programs, history, weightLogs, personalRecords]);
+
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     const isCapacitor = Capacitor.isNativePlatform();
@@ -181,6 +262,16 @@ function App() {
       const guestHistory = [...history];
       const guestWeightLogs = [...weightLogs];
       const guestPRs = [...personalRecords];
+
+      // Check if we are running in Electron
+      const isElectron = /electron/i.test(navigator.userAgent);
+      if (isElectron) {
+        // Trigger local Electron server to open hosted web app in system browser
+        fetch('/api/open-external-browser');
+        setIsWaitingForBrowser(true);
+        setIsLoading(false);
+        return;
+      }
 
       let resultUser;
       if (isCapacitor) {
@@ -1050,6 +1141,11 @@ function App() {
           setContinueAsGuest(true);
         }}
         isLoading={isLoading}
+        isWaitingForBrowser={isWaitingForBrowser}
+        onCancelWaiting={() => {
+          setIsWaitingForBrowser(false);
+          setIsLoading(false);
+        }}
       />
     );
   }

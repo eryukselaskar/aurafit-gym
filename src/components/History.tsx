@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Calendar, Clock, Award, ChevronDown, ChevronUp, Download } from 'lucide-react';
+import { Trash2, Calendar, Clock, Award, ChevronDown, ChevronUp, Download, X } from 'lucide-react';
 import type { CompletedWorkout } from '../types';
 
 interface HistoryProps {
@@ -9,22 +9,22 @@ interface HistoryProps {
 
 export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; name: string } | null>(null);
 
   const toggleExpand = (id: string) => {
-    if (expandedId === id) {
-      setExpandedId(null);
-    } else {
-      setExpandedId(id);
-    }
+    setExpandedId(prev => prev === id ? null : id);
   };
 
   const handleDelete = (id: string, name: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Avoid triggering expand toggle
-    const confirm = window.confirm(`"${name}" antrenman geçmişini silmek istediğinizden emin misiniz?`);
-    if (confirm) {
-      deleteHistoryItem(id);
-      if (expandedId === id) setExpandedId(null);
-    }
+    e.stopPropagation();
+    setConfirmDelete({ id, name });
+  };
+
+  const doDelete = () => {
+    if (!confirmDelete) return;
+    deleteHistoryItem(confirmDelete.id);
+    if (expandedId === confirmDelete.id) setExpandedId(null);
+    setConfirmDelete(null);
   };
 
   const exportWeeklyCSV = () => {
@@ -77,6 +77,7 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
   };
 
   return (
+    <>
     <div className="history-page-container anim-slide-up">
       {/* Header */}
       <header className="history-header">
@@ -105,7 +106,7 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
           </div>
         ) : (
           <div className="history-items-container">
-            {[...history].reverse().map((workout) => {
+            {[...history].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((workout) => {
               const isExpanded = expandedId === workout.id;
               const completedDate = new Date(workout.date).toLocaleDateString('tr-TR', {
                 weekday: 'long',
@@ -154,6 +155,11 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
                   {isExpanded && (
                     <div className="history-expanded-details anim-slide-up" onClick={(e) => e.stopPropagation()}>
                       <h4 className="detail-title">Antrenman Detayları</h4>
+                      {workout.notes && (
+                        <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                          <span style={{ fontWeight: 700, color: 'var(--accent-violet)', marginRight: '6px' }}>📝 Not:</span>{workout.notes}
+                        </div>
+                      )}
                       
                       {workout.exercises.length === 0 ? (
                         <p className="no-detail-msg">Bu antrenman için kaydedilmiş set detayı bulunmuyor.</p>
@@ -431,6 +437,50 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
           font-size: 24px;
         }
 
+        .bottom-sheet-backdrop {
+          position: fixed;
+          top: 0; left: 0;
+          width: 100vw; height: 100vh;
+          background: rgba(0,0,0,0.6);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: flex-end;
+          justify-content: center;
+          z-index: 2100;
+        }
+        .bottom-sheet-content {
+          width: 100%;
+          max-width: 500px;
+          background: var(--bg-card-solid);
+          border-top: 1px solid var(--border-medium);
+          border-left: 1px solid var(--border-medium);
+          border-right: 1px solid var(--border-medium);
+          border-top-left-radius: var(--radius-lg);
+          border-top-right-radius: var(--radius-lg);
+          padding: 30px 24px calc(30px + env(safe-area-inset-bottom, 0px)) 24px;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+          animation: slideUpSheet 0.35s cubic-bezier(0.16,1,0.3,1) forwards;
+        }
+        @keyframes slideUpSheet {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+        .bottom-sheet-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          padding-bottom: 16px;
+        }
+        .btn-close-sheet {
+          background: transparent;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          padding: 4px;
+        }
+
         @media (max-width: 768px) {
           .history-header {
             flex-direction: column;
@@ -458,5 +508,33 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
         }
       `}</style>
     </div>
+
+    {/* Confirm delete modal — outside anim-slide-up to avoid CSS transform stacking context breaking position:fixed */}
+    {confirmDelete && (
+      <div className="bottom-sheet-backdrop" onClick={() => setConfirmDelete(null)}>
+        <div className="bottom-sheet-content glass-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400, gap: 20 }}>
+          <div className="bottom-sheet-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+            <div>
+              <h3 style={{ fontSize: 16 }}>Emin misiniz?</h3>
+              <p style={{ marginTop: 8, lineHeight: 1.5, color: 'var(--text-secondary)', fontSize: 14 }}>
+                "{confirmDelete.name}" antrenman geçmişini silmek istediğinizden emin misiniz?
+              </p>
+            </div>
+            <button className="btn-close-sheet" onClick={() => setConfirmDelete(null)}><X size={20} /></button>
+          </div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmDelete(null)}>İptal</button>
+            <button
+              className="btn btn-danger"
+              style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+              onClick={doDelete}
+            >
+              Evet, sil
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 };

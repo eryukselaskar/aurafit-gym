@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Compass, Heart, Download, Share2, Search, X, Check, User, Calendar, Dumbbell } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Compass, Heart, Download, Share2, Search, X, Check, User, Calendar, Dumbbell, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import type { PublicProgram, WorkoutProgram, WorkoutSession } from '../types';
 
 interface ExploreProps {
@@ -27,9 +27,16 @@ export const Explore: React.FC<ExploreProps> = ({
   const [selectedProgToShare, setSelectedProgToShare] = useState<WorkoutProgram | null>(null);
   const [creatorName, setCreatorName] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Track which programs the user has already imported in this session to show checkmark
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
 
   // Reset selected program to share when modal closes
   useEffect(() => {
@@ -42,22 +49,19 @@ export const Explore: React.FC<ExploreProps> = ({
     e.preventDefault();
     if (!selectedProgToShare) return;
     if (!creatorName.trim()) {
-      alert('Lütfen paylaşım için bir kullanıcı adı girin.');
+      showToast('Lütfen paylaşım için bir kullanıcı adı girin.', 'error');
       return;
     }
 
     setIsPublishing(true);
     try {
       await publishProgram(selectedProgToShare, creatorName.trim());
-      
-      // Save display name locally for future convenience
       localStorage.setItem('aurafit_creator_name', creatorName.trim());
-      
       setIsShareModalOpen(false);
-      alert('Programınız toplulukla başarıyla paylaşıldı!');
+      showToast('Programınız toplulukla başarıyla paylaşıldı! 🎉', 'success');
     } catch (err) {
       console.error(err);
-      alert('Paylaşım başarısız oldu.');
+      showToast('Paylaşım başarısız oldu. Tekrar deneyin.', 'error');
     } finally {
       setIsPublishing(false);
     }
@@ -73,12 +77,12 @@ export const Explore: React.FC<ExploreProps> = ({
   const handleImport = (prog: PublicProgram) => {
     importProgram(prog);
     setImportedIds(prev => new Set([...prev, prog.id]));
+    showToast(`"${prog.name}" programlar listenize eklendi!`, 'success');
   };
 
-  // Upvote locally optimistic toggle
   const handleUpvote = (progId: string) => {
     if (!userId) {
-      alert('Lütfen oylama yapabilmek için bulut bağlantısının kurulmasını bekleyin.');
+      showToast('Oylama için bulut bağlantısı gerekiyor.', 'error');
       return;
     }
     upvoteProgram(progId);
@@ -100,6 +104,14 @@ export const Explore: React.FC<ExploreProps> = ({
     });
 
   return (
+    <>
+    {/* Toast Notification */}
+    {toast && (
+      <div className={`explore-toast ${toast.type}`}>
+        {toast.type === 'success' ? <CheckCircle size={18} /> : <AlertCircle size={18} />}
+        <span>{toast.message}</span>
+      </div>
+    )}
     <div className="explore-container anim-slide-up">
       {/* Header */}
       <header className="explore-header">
@@ -162,18 +174,23 @@ export const Explore: React.FC<ExploreProps> = ({
           filteredPrograms.map((prog) => {
             const hasUpvoted = userId ? (prog.upvotedBy || []).includes(userId) : false;
             const alreadyImported = importedIds.has(prog.id);
+            const isExpanded = expandedCard === prog.id;
 
             const isMultiDay = prog.sessions && prog.sessions.length > 0;
-            const totalExercises = isMultiDay 
+            const totalExercises = isMultiDay
               ? prog.sessions!.reduce((sum, s) => sum + s.exercises.length, 0)
               : prog.exercises.length;
-            const totalSets = isMultiDay 
+            const totalSets = isMultiDay
               ? prog.sessions!.reduce((sum, s) => sum + s.exercises.reduce((acc, e) => acc + e.sets.length, 0), 0)
               : prog.exercises.reduce((sum, e) => sum + e.sets.length, 0);
 
+            const allItems = isMultiDay ? prog.sessions! : prog.exercises;
+            const previewItems = isExpanded ? allItems : allItems.slice(0, 3);
+            const hasMore = !isExpanded && allItems.length > 3;
+
             return (
-              <div 
-                key={prog.id} 
+              <div
+                key={prog.id}
                 className="explore-program-card glass-panel"
                 style={{
                   border: prog.upvotes > 0 ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid var(--border-light)',
@@ -185,8 +202,8 @@ export const Explore: React.FC<ExploreProps> = ({
                     <User size={14} className="creator-avatar" />
                     <span className="creator-name">{prog.creatorName}</span>
                   </div>
-                  <button 
-                    onClick={() => handleUpvote(prog.id)} 
+                  <button
+                    onClick={() => handleUpvote(prog.id)}
                     className={`btn-upvote ${hasUpvoted ? 'active-voted' : ''}`}
                   >
                     <Heart size={16} fill={hasUpvoted ? 'currentColor' : 'none'} />
@@ -196,11 +213,10 @@ export const Explore: React.FC<ExploreProps> = ({
 
                 <div className="explore-card-info">
                   <h3 className="explore-prog-name">{prog.name}</h3>
-                  <p className="explore-prog-desc">
-                    {prog.description || 'Bu program için bir açıklama eklenmemiş.'}
-                  </p>
-                  
-                  {/* Modern quick stats badges row */}
+                  {prog.description && (
+                    <p className="explore-prog-desc">{prog.description}</p>
+                  )}
+
                   <div className="explore-card-stats">
                     {isMultiDay ? (
                       <span className="badge badge-violet" style={{ fontSize: '10px', padding: '3px 8px' }}>
@@ -222,9 +238,9 @@ export const Explore: React.FC<ExploreProps> = ({
 
                 {/* Exercises/Sessions preview panel */}
                 <div className="explore-prog-exercises">
-                  {prog.sessions && prog.sessions.length > 0 ? (
-                    prog.sessions.slice(0, 3).map((sess: WorkoutSession, idx: number) => (
-                      <div key={idx} className="explore-ex-item" style={{ borderBottom: idx < Math.min(prog.sessions!.length, 3) - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
+                  {isMultiDay ? (
+                    (previewItems as WorkoutSession[]).map((sess, idx) => (
+                      <div key={idx} className="explore-ex-item" style={{ borderBottom: idx < previewItems.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
                         <div className="ex-item-left">
                           <Calendar size={13} className="ex-item-icon-violet" />
                           <span className="ex-item-name">{sess.name}</span>
@@ -233,8 +249,8 @@ export const Explore: React.FC<ExploreProps> = ({
                       </div>
                     ))
                   ) : (
-                    prog.exercises.slice(0, 3).map((ex, idx) => (
-                      <div key={idx} className="explore-ex-item" style={{ borderBottom: idx < Math.min(prog.exercises.length, 3) - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
+                    (previewItems as typeof prog.exercises).map((ex, idx) => (
+                      <div key={idx} className="explore-ex-item" style={{ borderBottom: idx < previewItems.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
                         <div className="ex-item-left">
                           <Dumbbell size={13} className="ex-item-icon-cyan" />
                           <span className="ex-item-name">{ex.name}</span>
@@ -243,15 +259,17 @@ export const Explore: React.FC<ExploreProps> = ({
                       </div>
                     ))
                   )}
-                  {prog.sessions && prog.sessions.length > 3 && (
-                    <div className="preview-more">
-                      +{prog.sessions.length - 3} GÜN DAHA
-                    </div>
-                  )}
-                  {!prog.sessions && prog.exercises && prog.exercises.length > 3 && (
-                    <div className="preview-more">
-                      +{prog.exercises.length - 3} HAREKET DAHA
-                    </div>
+                  {(hasMore || isExpanded) && allItems.length > 3 && (
+                    <button
+                      className="btn-expand-card"
+                      onClick={() => setExpandedCard(isExpanded ? null : prog.id)}
+                    >
+                      {isExpanded ? (
+                        <><ChevronUp size={13} /> Daha Az Göster</>
+                      ) : (
+                        <><ChevronDown size={13} /> +{allItems.length - 3} {isMultiDay ? 'GÜN' : 'HAREKET'} DAHA</>
+                      )}
+                    </button>
                   )}
                 </div>
 
@@ -260,8 +278,8 @@ export const Explore: React.FC<ExploreProps> = ({
                   <span className="date-badge">
                     {new Date(prog.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
                   </span>
-                  
-                  <button 
+
+                  <button
                     onClick={() => handleImport(prog)}
                     disabled={alreadyImported}
                     className={`btn btn-sm btn-import-routine ${alreadyImported ? 'imported' : 'btn-outline'}`}
@@ -600,6 +618,67 @@ export const Explore: React.FC<ExploreProps> = ({
           max-width: 440px;
         }
 
+        .btn-expand-card {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          cursor: pointer;
+          padding: 4px 0;
+          text-transform: uppercase;
+          transition: color 0.2s;
+          margin-top: 4px;
+        }
+
+        .btn-expand-card:hover {
+          color: var(--accent-violet);
+        }
+
+        /* Toast notification */
+        .explore-toast {
+          position: fixed;
+          top: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 12px 20px;
+          border-radius: var(--radius-full);
+          font-size: 14px;
+          font-weight: 600;
+          white-space: nowrap;
+          animation: toast-in 0.3s ease;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+          backdrop-filter: blur(16px);
+          max-width: calc(100vw - 32px);
+          white-space: normal;
+          text-align: center;
+        }
+
+        .explore-toast.success {
+          background: rgba(16, 185, 129, 0.15);
+          border: 1px solid rgba(16, 185, 129, 0.3);
+          color: #10b981;
+        }
+
+        .explore-toast.error {
+          background: rgba(239, 68, 68, 0.15);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: #ef4444;
+        }
+
+        @keyframes toast-in {
+          from { opacity: 0; transform: translateX(-50%) translateY(-12px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
         @media (max-width: 768px) {
           .explore-header {
             flex-direction: column;
@@ -609,8 +688,12 @@ export const Explore: React.FC<ExploreProps> = ({
           .explore-header .btn {
             width: 100%;
           }
+          .explore-programs-grid {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
     </div>
+    </>
   );
 };
