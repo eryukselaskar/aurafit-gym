@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Edit2, ChevronLeft, Save, Sparkles, BookOpen, AlertCircle, PlusCircle, X, Play, GripVertical } from 'lucide-react';
-import type { WorkoutProgram, Exercise, WorkoutExercise, WorkoutSet, WorkoutSession } from '../types';
+import type { WorkoutProgram, Exercise, WorkoutExercise, WorkoutSession } from '../types';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -14,6 +14,8 @@ interface SortableExCardProps {
   onRestChange: (v: number) => void;
   onMinRepsChange: (v: number | undefined) => void;
   onMaxRepsChange: (v: number | undefined) => void;
+  onWeightChange: (v: number | undefined) => void;
+  onRirChange: (v: number | undefined) => void;
   onNotesChange: (v: string) => void;
   onSetChange: (setIdx: number, field: 'reps' | 'weight' | 'rir', value: number) => void;
   onAddSet: () => void;
@@ -21,7 +23,7 @@ interface SortableExCardProps {
 }
 
 const SortableExerciseCard: React.FC<SortableExCardProps> = ({
-  ex, onRemove, onRestChange, onMinRepsChange, onMaxRepsChange, onNotesChange, onSetChange, onAddSet, onRemoveSet
+  ex, onRemove, onRestChange, onMinRepsChange, onMaxRepsChange, onWeightChange, onRirChange, onNotesChange, onSetChange, onAddSet, onRemoveSet
 }) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ex.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
@@ -65,6 +67,16 @@ const SortableExerciseCard: React.FC<SortableExCardProps> = ({
           <input type="number" min="1" max="100" placeholder="Max" value={ex.maxReps || ''}
             onChange={(e) => onMaxRepsChange(parseInt(e.target.value) || undefined)} className="form-input mini-input" style={{ width: '65px' }} />
         </div>
+        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
+          <label className="form-label">Hedef Kilo (kg)</label>
+          <input type="number" min="0" max="500" step="0.5" placeholder="Kilo" value={ex.weight !== undefined ? ex.weight : ''}
+            onChange={(e) => onWeightChange(e.target.value !== '' ? parseFloat(e.target.value) : undefined)} className="form-input mini-input" style={{ width: '70px' }} />
+        </div>
+        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
+          <label className="form-label">Hedef RIR</label>
+          <input type="number" min="0" max="10" placeholder="RIR" value={ex.rir !== undefined ? ex.rir : ''}
+            onChange={(e) => onRirChange(e.target.value !== '' ? parseInt(e.target.value) : undefined)} className="form-input mini-input" style={{ width: '65px' }} />
+        </div>
         <div className="form-group inline-group" style={{ flexGrow: 1, display: 'flex', gap: '8px', alignItems: 'center' }}>
           <label className="form-label" style={{ whiteSpace: 'nowrap' }}>Koçun Notu</label>
           <input type="text" placeholder="Örn: RIR 1 - duraksamalı tempo" value={ex.notes || ''}
@@ -79,12 +91,30 @@ const SortableExerciseCard: React.FC<SortableExCardProps> = ({
         {ex.sets.map((set, setIdx) => (
           <div key={set.id} className="builder-set-row">
             <span className="set-number-label">{setIdx + 1}</span>
-            <input type="number" min="1" max="100" value={set.reps}
-              onChange={(e) => onSetChange(setIdx, 'reps', parseInt(e.target.value) || 0)} className="form-input mini-input" />
-            <input type="number" min="0" max="500" step="0.5" value={set.weight}
-              onChange={(e) => onSetChange(setIdx, 'weight', parseFloat(e.target.value) || 0)} className="form-input mini-input" />
-            <input type="number" min="0" max="10" placeholder="RIR" value={set.rir !== undefined ? set.rir : 2}
-              onChange={(e) => onSetChange(setIdx, 'rir', parseInt(e.target.value) || 0)} className="form-input mini-input" />
+            {ex.minReps && ex.maxReps ? (
+              <span className="set-readonly-badge" title="Egzersiz seviyesinde Min-Max tekrar ayarlandığı için bu değer sabitlenmiştir.">
+                {ex.minReps}-{ex.maxReps}
+              </span>
+            ) : (
+              <input type="number" min="1" max="100" value={set.reps}
+                onChange={(e) => onSetChange(setIdx, 'reps', parseInt(e.target.value) || 0)} className="form-input mini-input" />
+            )}
+            {ex.weight !== undefined ? (
+              <span className="set-readonly-badge" title="Egzersiz seviyesinde hedef ağırlık ayarlandığı için bu değer sabitlenmiştir.">
+                {ex.weight} kg
+              </span>
+            ) : (
+              <input type="number" min="0" max="500" step="0.5" value={set.weight}
+                onChange={(e) => onSetChange(setIdx, 'weight', parseFloat(e.target.value) || 0)} className="form-input mini-input" />
+            )}
+            {ex.rir !== undefined ? (
+              <span className="set-readonly-badge" title="Egzersiz seviyesinde hedef RIR ayarlandığı için bu değer sabitlenmiştir.">
+                RIR {ex.rir}
+              </span>
+            ) : (
+              <input type="number" min="0" max="10" placeholder="RIR" value={set.rir !== undefined ? set.rir : 2}
+                onChange={(e) => onSetChange(setIdx, 'rir', parseInt(e.target.value) || 0)} className="form-input mini-input" />
+            )}
             <button onClick={() => onRemoveSet(setIdx)} disabled={ex.sets.length <= 1} className="btn-delete-set">
               <X size={14} />
             </button>
@@ -97,6 +127,9 @@ const SortableExerciseCard: React.FC<SortableExCardProps> = ({
     </div>
   );
 };
+
+// Egzersiz kütüphanesindeki filtrelerle aynı liste.
+const SELECTOR_CATEGORIES = ['All', 'Göğüs', 'Sırt', 'Bacak', 'Omuz', 'Kol', 'Karın', 'Kardiyo'];
 
 interface ProgramBuilderProps {
   programs: WorkoutProgram[];
@@ -126,6 +159,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
   const [programExercises, setProgramExercises] = useState<WorkoutExercise[]>([]);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [formError, setFormError] = useState('');
 
   // Bundle program states in builder form
@@ -200,6 +234,28 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
     setIsEditing(true);
   };
 
+  // Düzenleyicide kaydedilmemiş içerik var mı? Geri çıkışta uyarmak için kullanılır.
+  const hasUnsavedContent = () => {
+    if (programName.trim() || programDesc.trim()) return true;
+    return isBundleProgram
+      ? programSessions.some(s => s.exercises.length > 0)
+      : programExercises.length > 0;
+  };
+
+  const handleExitEditor = () => {
+    if (!hasUnsavedContent()) {
+      setIsEditing(false);
+      return;
+    }
+    setConfirmModal({
+      message: 'Kaydedilmemiş değişiklikleriniz var. Çıkarsanız bu program kaybolacak.',
+      onConfirm: () => {
+        setConfirmModal(null);
+        setIsEditing(false);
+      }
+    });
+  };
+
   const handleAddSession = () => {
     const newSession: WorkoutSession = {
       id: `sess-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
@@ -252,69 +308,56 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
     setSearchTerm('');
   };
 
-  const handleRemoveExercise = (index: number) => {
+  // Split ve tek-seans programlar aynı egzersiz listesi mantığını paylaşır; tek fark
+  // listenin nerede durduğu. Bu yardımcı o dallanmayı tek yere toplar ve güncellemeyi
+  // immutable yapar (önceki sürüm state nesnelerini doğrudan mutasyona uğratıyordu).
+  const updateExercises = (
+    mutate: (list: WorkoutExercise[]) => WorkoutExercise[] | void
+  ) => {
     if (isBundleProgram) {
-      const updated = [...programSessions];
-      if (updated[activeSessionIndex]) {
-        updated[activeSessionIndex].exercises.splice(index, 1);
-        setProgramSessions(updated);
-      }
+      setProgramSessions(prev => prev.map((sess, i) => {
+        if (i !== activeSessionIndex) return sess;
+        const copy = sess.exercises.map(ex => ({ ...ex, sets: ex.sets.map(s => ({ ...s })) }));
+        return { ...sess, exercises: mutate(copy) || copy };
+      }));
     } else {
-      const updated = [...programExercises];
-      updated.splice(index, 1);
-      setProgramExercises(updated);
+      setProgramExercises(prev => {
+        const copy = prev.map(ex => ({ ...ex, sets: ex.sets.map(s => ({ ...s })) }));
+        return mutate(copy) || copy;
+      });
     }
+  };
+
+  // Tek bir egzersizi güvenle güncellemek için kısayol.
+  const updateExercise = (index: number, mutate: (ex: WorkoutExercise) => void) => {
+    updateExercises(list => {
+      const target = list[index];
+      if (target) mutate(target);
+    });
+  };
+
+  const handleRemoveExercise = (index: number) => {
+    updateExercises(list => list.filter((_, i) => i !== index));
   };
 
   const handleAddSet = (exerciseIndex: number) => {
-    if (isBundleProgram) {
-      const updated = [...programSessions];
-      const targetEx = updated[activeSessionIndex]?.exercises[exerciseIndex];
-      if (!targetEx) return;
-      const lastSet = targetEx.sets[targetEx.sets.length - 1];
-      
-      const newSet: WorkoutSet = {
-        id: `s-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        reps: lastSet ? lastSet.reps : 10,
-        weight: lastSet ? lastSet.weight : 20,
-        rir: lastSet ? (lastSet.rir !== undefined ? lastSet.rir : 2) : 2,
+    updateExercise(exerciseIndex, target => {
+      const lastSet = target.sets[target.sets.length - 1];
+      target.sets.push({
+        id: `s-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        reps: target.maxReps !== undefined ? target.maxReps : (lastSet ? lastSet.reps : 10),
+        weight: target.weight !== undefined ? target.weight : (lastSet ? lastSet.weight : 20),
+        rir: target.rir !== undefined ? target.rir : (lastSet ? (lastSet.rir !== undefined ? lastSet.rir : 2) : 2),
         completed: false
-      };
-      
-      targetEx.sets.push(newSet);
-      setProgramSessions(updated);
-    } else {
-      const updated = [...programExercises];
-      const targetEx = updated[exerciseIndex];
-      const lastSet = targetEx.sets[targetEx.sets.length - 1];
-      
-      const newSet: WorkoutSet = {
-        id: `s-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-        reps: lastSet ? lastSet.reps : 10,
-        weight: lastSet ? lastSet.weight : 20,
-        rir: lastSet ? (lastSet.rir !== undefined ? lastSet.rir : 2) : 2,
-        completed: false
-      };
-      
-      targetEx.sets.push(newSet);
-      setProgramExercises(updated);
-    }
+      });
+    });
   };
 
   const handleRemoveSet = (exerciseIndex: number, setIndex: number) => {
-    if (isBundleProgram) {
-      const updated = [...programSessions];
-      const targetEx = updated[activeSessionIndex]?.exercises[exerciseIndex];
-      if (!targetEx || targetEx.sets.length <= 1) return;
-      targetEx.sets.splice(setIndex, 1);
-      setProgramSessions(updated);
-    } else {
-      const updated = [...programExercises];
-      const targetEx = updated[exerciseIndex];
-      if (targetEx.sets.length <= 1) return;
-      targetEx.sets.splice(setIndex, 1);
-      setProgramExercises(updated);
-    }
+    updateExercise(exerciseIndex, target => {
+      if (target.sets.length <= 1) return;
+      target.sets.splice(setIndex, 1);
+    });
   };
 
   const handleSetChange = (
@@ -323,85 +366,45 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
     field: 'reps' | 'weight' | 'rir',
     value: number
   ) => {
-    if (isBundleProgram) {
-      const updated = [...programSessions];
-      const targetEx = updated[activeSessionIndex]?.exercises[exerciseIndex];
-      if (!targetEx) return;
-      targetEx.sets[setIndex] = {
-        ...targetEx.sets[setIndex],
-        [field]: value
-      };
-      setProgramSessions(updated);
-    } else {
-      const updated = [...programExercises];
-      updated[exerciseIndex].sets[setIndex] = {
-        ...updated[exerciseIndex].sets[setIndex],
-        [field]: value
-      };
-      setProgramExercises(updated);
-    }
+    updateExercise(exerciseIndex, target => {
+      if (!target.sets[setIndex]) return;
+      target.sets[setIndex] = { ...target.sets[setIndex], [field]: value };
+    });
   };
 
   const handleRestChange = (exerciseIndex: number, value: number) => {
-    if (isBundleProgram) {
-      const updated = [...programSessions];
-      const targetEx = updated[activeSessionIndex]?.exercises[exerciseIndex];
-      if (!targetEx) return;
-      targetEx.restTime = value;
-      setProgramSessions(updated);
-    } else {
-      const updated = [...programExercises];
-      updated[exerciseIndex].restTime = value;
-      setProgramExercises(updated);
-    }
+    updateExercise(exerciseIndex, target => { target.restTime = value; });
   };
 
   const handleNotesChange = (exerciseIndex: number, value: string) => {
-    if (isBundleProgram) {
-      const updated = [...programSessions];
-      const targetEx = updated[activeSessionIndex]?.exercises[exerciseIndex];
-      if (!targetEx) return;
-      targetEx.notes = value;
-      setProgramSessions(updated);
-    } else {
-      const updated = [...programExercises];
-      updated[exerciseIndex].notes = value;
-      setProgramExercises(updated);
-    }
+    updateExercise(exerciseIndex, target => { target.notes = value; });
   };
 
   const handleMinRepsChange = (exerciseIndex: number, value: number | undefined) => {
-    if (isBundleProgram) {
-      const updated = [...programSessions];
-      const targetEx = updated[activeSessionIndex]?.exercises[exerciseIndex];
-      if (!targetEx) return;
-      targetEx.minReps = value;
-      setProgramSessions(updated);
-    } else {
-      const updated = [...programExercises];
-      if (updated[exerciseIndex]) {
-        updated[exerciseIndex].minReps = value;
-        setProgramExercises(updated);
-      }
-    }
+    updateExercise(exerciseIndex, target => { target.minReps = value; });
   };
 
+  // Egzersiz seviyesindeki hedef girildiğinde set satırları salt-okunur rozete dönüşür,
+  // bu yüzden değeri setlere de yazıyoruz (UI'daki "sabitlenmiştir" davranışı).
   const handleMaxRepsChange = (exerciseIndex: number, value: number | undefined) => {
-    if (isBundleProgram) {
-      const updated = [...programSessions];
-      const targetEx = updated[activeSessionIndex]?.exercises[exerciseIndex];
-      if (!targetEx) return;
-      targetEx.maxReps = value;
-      if (value !== undefined) targetEx.sets = targetEx.sets.map(s => ({ ...s, reps: value }));
-      setProgramSessions(updated);
-    } else {
-      const updated = [...programExercises];
-      if (updated[exerciseIndex]) {
-        updated[exerciseIndex].maxReps = value;
-        if (value !== undefined) updated[exerciseIndex].sets = updated[exerciseIndex].sets.map(s => ({ ...s, reps: value }));
-        setProgramExercises(updated);
-      }
-    }
+    updateExercise(exerciseIndex, target => {
+      target.maxReps = value;
+      if (value !== undefined) target.sets = target.sets.map(s => ({ ...s, reps: value }));
+    });
+  };
+
+  const handleWeightChange = (exerciseIndex: number, value: number | undefined) => {
+    updateExercise(exerciseIndex, target => {
+      target.weight = value;
+      if (value !== undefined) target.sets = target.sets.map(s => ({ ...s, weight: value }));
+    });
+  };
+
+  const handleRirChange = (exerciseIndex: number, value: number | undefined) => {
+    updateExercise(exerciseIndex, target => {
+      target.rir = value;
+      if (value !== undefined) target.sets = target.sets.map(s => ({ ...s, rir: value }));
+    });
   };
 
   const handleSave = () => {
@@ -443,7 +446,8 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
   };
 
   const filteredExercises = exercises.filter((ex) =>
-    ex.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ex.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    (selectedCategory === 'All' || ex.category === selectedCategory)
   );
 
   if (isEditing) {
@@ -453,10 +457,11 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
 
 
     return (
+      <>
       <div className="builder-container anim-slide-up">
         {/* Back and Title Header */}
         <header className="builder-header">
-          <button onClick={() => setIsEditing(false)} className="btn btn-secondary btn-icon">
+          <button onClick={handleExitEditor} className="btn btn-secondary btn-icon" aria-label="Geri dön">
             <ChevronLeft size={20} />
           </button>
           <div className="header-titles">
@@ -554,7 +559,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             {isBundleProgram && (
               <div className="session-tabs-wrapper" style={{ borderBottom: '1px solid var(--border-light)', paddingBottom: '12px', marginBottom: '10px' }}>
                 <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Program Günleri / Seanslar</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                <div className="session-tabs-container">
                   {programSessions.map((sess, idx) => (
                     <button
                       key={sess.id}
@@ -636,6 +641,8 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                         onRestChange={(v) => handleRestChange(exIdx, v)}
                         onMinRepsChange={(v) => handleMinRepsChange(exIdx, v)}
                         onMaxRepsChange={(v) => handleMaxRepsChange(exIdx, v)}
+                        onWeightChange={(v) => handleWeightChange(exIdx, v)}
+                        onRirChange={(v) => handleRirChange(exIdx, v)}
                         onNotesChange={(v) => handleNotesChange(exIdx, v)}
                         onSetChange={(setIdx, field, value) => handleSetChange(exIdx, setIdx, field, value)}
                         onAddSet={() => handleAddSet(exIdx)}
@@ -648,48 +655,88 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             </div>
           </section>
         </div>
+      </div>
 
-        {/* Exercise Selector Slide-In / Modal */}
-        {showExerciseSelector && (
-          <div className="modal-backdrop">
-            <div className="modal-content glass-panel anim-slide-up selector-modal">
-              <div className="modal-header">
-                <h2 className="modal-title">Egzersiz Seçin</h2>
-                <button onClick={() => setShowExerciseSelector(false)} className="modal-close-btn">
-                  <X size={20} />
+      {/* Exercise Selector Slide-In / Modal */}
+      {showExerciseSelector && (
+        <div className="modal-backdrop">
+          <div className="modal-content glass-panel anim-slide-up selector-modal">
+            <div className="modal-header">
+              <h2 className="modal-title">Egzersiz Seçin</h2>
+              <button onClick={() => setShowExerciseSelector(false)} className="modal-close-btn">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="form-group selector-search">
+              <input
+                type="text"
+                placeholder="Egzersiz adı ara..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="form-input"
+              />
+            </div>
+
+            <div className="selector-filters">
+              {SELECTOR_CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`filter-badge ${selectedCategory === cat ? 'active' : ''}`}
+                >
+                  {cat === 'All' ? 'Tümü' : cat}
                 </button>
-              </div>
+              ))}
+            </div>
 
-              <div className="form-group selector-search">
-                <input
-                  type="text"
-                  placeholder="Egzersiz adı ara..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="form-input"
-                />
-              </div>
-
-              <div className="selector-list">
-                {filteredExercises.map((ex) => (
-                  <button
-                    key={ex.id}
-                    onClick={() => handleAddExerciseToProgram(ex)}
-                    className="selector-item"
-                  >
-                    <div>
-                      <p className="selector-item-name">{ex.name}</p>
-                      <span className="badge badge-violet">{ex.category}</span>
-                    </div>
-                    <Plus size={16} className="selector-plus-icon" />
-                  </button>
-                ))}
-              </div>
+            <div className="selector-list">
+              {filteredExercises.length === 0 && (
+                <p className="selector-empty">Bu filtreye uyan egzersiz bulunamadı.</p>
+              )}
+              {filteredExercises.map((ex) => (
+                <button
+                  key={ex.id}
+                  onClick={() => handleAddExerciseToProgram(ex)}
+                  className="selector-item"
+                >
+                  <div>
+                    <p className="selector-item-name">{ex.name}</p>
+                    <span className="badge badge-violet">{ex.category}</span>
+                  </div>
+                  <Plus size={16} className="selector-plus-icon" />
+                </button>
+              ))}
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        <style>{`
+      {confirmModal && (
+        <div className="pb-modal-backdrop" onClick={() => setConfirmModal(null)}>
+          <div className="pb-modal-box glass-panel" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ fontSize: 16 }}>Emin misiniz?</h3>
+                <p style={{ marginTop: 8, lineHeight: 1.5, color: 'var(--text-secondary)', fontSize: 14 }}>{confirmModal.message}</p>
+              </div>
+              <button style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }} onClick={() => setConfirmModal(null)}><X size={20} /></button>
+            </div>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmModal(null)}>Vazgeç</button>
+              <button
+                className="btn btn-danger"
+                style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+                onClick={confirmModal.onConfirm}
+              >
+                Evet, çık
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
           .builder-container {
             display: flex;
             flex-direction: column;
@@ -879,6 +926,20 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             width: 100%;
           }
 
+          .set-readonly-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 38px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px dashed var(--border-light);
+            border-radius: var(--radius-md);
+            color: var(--text-secondary);
+            font-size: 13px;
+            font-weight: 600;
+          }
+
           .btn-delete-set {
             background: transparent;
             border: none;
@@ -924,13 +985,80 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             background: rgba(255, 255, 255, 0.02);
           }
 
+          /* Modal styling */
+          .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 6, 9, 0.8);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 20px;
+          }
+
+          .modal-content {
+            width: 100%;
+            max-width: 480px;
+            background: var(--bg-card-solid);
+            border: 1px solid var(--border-medium);
+            border-radius: var(--radius-lg);
+            padding: 30px;
+            box-shadow: var(--shadow-lg);
+          }
+
+          .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+          }
+
+          .modal-title {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+          }
+
+          .modal-close-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            transition: color var(--transition-fast);
+          }
+
+          .modal-close-btn:hover {
+            color: var(--text-primary);
+          }
+
           /* Selector Modal specific */
           .selector-modal {
             max-width: 420px;
           }
 
           .selector-search {
+            margin-bottom: 12px;
+          }
+
+          .selector-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
             margin-bottom: 16px;
+          }
+
+          .selector-empty {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            padding: 24px 0;
           }
 
           .selector-list {
@@ -1011,6 +1139,11 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
               width: 100% !important;
               min-width: 0 !important;
             }
+            .set-readonly-badge {
+              height: 32px;
+              font-size: 12px;
+              border-radius: var(--radius-sm);
+            }
             .set-number-label {
               font-size: 13px;
             }
@@ -1051,7 +1184,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             }
           }
         `}</style>
-      </div>
+      </>
     );
   }
 

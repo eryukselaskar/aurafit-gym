@@ -3,6 +3,7 @@ import {
   collection, 
   doc, 
   getDocs, 
+  getDoc,
   setDoc, 
   deleteDoc,
   arrayUnion,
@@ -109,6 +110,21 @@ export const publishProgramToHub = async (
 ): Promise<void> => {
   // We use a unique public program ID based on original program ID + creator ID
   const publicProgId = `public-${program.id}-${creatorId}`;
+  const docRef = doc(db, 'public_programs', publicProgId);
+  
+  let existingUpvotes = 0;
+  let existingUpvotedBy: string[] = [];
+  
+  try {
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data() as PublicProgram;
+      existingUpvotes = data.upvotes || 0;
+      existingUpvotedBy = data.upvotedBy || [];
+    }
+  } catch (e) {
+    console.warn("Failed to check existing upvotes for re-publish, default to 0:", e);
+  }
   
   const publicProg: PublicProgram = {
     id: publicProgId,
@@ -119,12 +135,12 @@ export const publishProgramToHub = async (
     sessions: program.sessions || [],
     creatorId,
     creatorName,
-    upvotes: 0,
-    upvotedBy: [],
+    upvotes: existingUpvotes,
+    upvotedBy: existingUpvotedBy,
     createdAt: new Date().toISOString()
   };
 
-  await setDoc(doc(db, 'public_programs', publicProgId), toFirestoreData(publicProg));
+  await setDoc(docRef, toFirestoreData(publicProg));
 };
 
 export const fetchPublicPrograms = async (): Promise<PublicProgram[]> => {

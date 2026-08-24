@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Dumbbell, Calendar, BookOpen, Sparkles, Compass } from 'lucide-react';
+import { LayoutDashboard, Dumbbell, Calendar, BookOpen, Sparkles } from 'lucide-react';
 import type { ActiveTab } from '../types';
 import type { User } from '../utils/firebase';
 
@@ -16,8 +16,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isWor
   const menuItems = [
     { id: 'dashboard', label: 'Özet Panel', icon: LayoutDashboard },
     { id: 'programs', label: 'Programlarım', icon: Calendar },
-    { id: 'exercises', label: 'Egzersizler', icon: BookOpen },
-    { id: 'explore', label: 'Keşfet', icon: Compass }
+    { id: 'exercises', label: 'Egzersizler', icon: BookOpen }
+    // Topluluk/Keşfet sekmesi şimdilik devre dışı
   ] as const;
 
   return (

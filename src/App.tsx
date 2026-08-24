@@ -474,9 +474,11 @@ function App() {
         setPrograms(combined);
         savePrograms(combined);
       } else {
-        // Subsequent snapshots: trust cloud as source of truth, keeping defaults if not customized in cloud
+        // Subsequent snapshots: merge cloud programs with local programs to protect unsynced local creations/modifications
+        const localPrograms = getPrograms();
         const mergedMap = new Map<string, WorkoutProgram>();
         INITIAL_PROGRAMS.forEach(p => mergedMap.set(p.id, p));
+        localPrograms.forEach(p => mergedMap.set(p.id, p));
         cloudPrograms.forEach(p => mergedMap.set(p.id, p));
 
         const combined = Array.from(mergedMap.values());
@@ -515,8 +517,13 @@ function App() {
         setHistory(combined);
         saveHistory(combined);
       } else {
-        // Subsequent snapshots: trust cloud as source of truth
-        const combined = [...cloudHistory].sort(
+        // Subsequent snapshots: merge cloud history with local history to protect unsynced local completed workouts
+        const localHistory = getHistory();
+        const mergedMap = new Map<string, CompletedWorkout>();
+        localHistory.forEach(h => mergedMap.set(h.id, h));
+        cloudHistory.forEach(h => mergedMap.set(h.id, h));
+
+        const combined = Array.from(mergedMap.values()).sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
         setHistory(combined);
@@ -554,8 +561,13 @@ function App() {
         setWeightLogs(combined);
         saveWeightLogs(combined);
       } else {
-        // Subsequent snapshots: trust cloud as source of truth
-        const combined = [...cloudWeightLogs].sort(
+        // Subsequent snapshots: merge cloud weight logs with local weight logs to protect unsynced local logs
+        const localWeightLogs = getWeightLogs();
+        const mergedMap = new Map<string, WeightLog>();
+        localWeightLogs.forEach(log => mergedMap.set(log.id, log));
+        cloudWeightLogs.forEach(log => mergedMap.set(log.id, log));
+
+        const combined = Array.from(mergedMap.values()).sort(
           (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
         );
         setWeightLogs(combined);
@@ -591,9 +603,15 @@ function App() {
         setPersonalRecords(combined);
         savePersonalRecords(combined);
       } else {
-        // Subsequent snapshots: trust cloud as source of truth
-        setPersonalRecords(cloudPRs);
-        savePersonalRecords(cloudPRs);
+        // Subsequent snapshots: merge cloud PRs with local PRs to protect unsynced local personal records
+        const localPRs = getPersonalRecords();
+        const mergedMap = new Map<string, PersonalRecord>();
+        localPRs.forEach(pr => mergedMap.set(pr.exerciseId, pr));
+        cloudPRs.forEach(pr => mergedMap.set(pr.exerciseId, pr));
+
+        const combined = Array.from(mergedMap.values());
+        setPersonalRecords(combined);
+        savePersonalRecords(combined);
       }
     });
 
@@ -697,7 +715,9 @@ function App() {
         name: `${program.name} - ${session.name}`,
         description: program.description,
         exercises: session.exercises,
-        createdAt: program.createdAt
+        createdAt: program.createdAt,
+        parentName: program.name,
+        sessionName: session.name
       };
     }
 
@@ -892,6 +912,7 @@ function App() {
     }
     
     const publicProgId = `public-${program.id}-${userId}`;
+    const existingPub = publicPrograms.find(p => p.id === publicProgId);
     const newPublicProg: PublicProgram = {
       id: publicProgId,
       originalProgramId: program.id,
@@ -901,8 +922,8 @@ function App() {
       sessions: program.sessions || [],
       creatorId: userId,
       creatorName,
-      upvotes: 0,
-      upvotedBy: [],
+      upvotes: existingPub ? (existingPub.upvotes || 0) : 0,
+      upvotedBy: existingPub ? (existingPub.upvotedBy || []) : [],
       createdAt: new Date().toISOString()
     };
 
@@ -965,7 +986,7 @@ function App() {
       })),
       sessions: publicProg.sessions ? publicProg.sessions.map(s => ({
         ...s,
-        exercises: s.exercises.map(ex => ({
+        exercises: (s.exercises || []).map(ex => ({
           ...ex,
           id: `ex-imported-${Date.now()}-${Math.random()}`
         }))

@@ -1,4 +1,5 @@
 import type { Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord } from '../types';
+import { DATASET_EXERCISES } from './datasetExercises';
 
 export const INITIAL_EXERCISES: Exercise[] = [
   // Göğüs (Chest)
@@ -287,7 +288,8 @@ export const INITIAL_EXERCISES: Exercise[] = [
   { id: 'ex-237', name: 'Hack Squat (45°)', category: 'Bacak', description: '45 derece hack squat makinesinde yapılan çömelme hareketi. Kuadriseps ve kalçayı dengeli çalıştırır.' },
   { id: 'ex-238', name: 'Smith Machine Hip Thrust', category: 'Bacak', description: 'Smith makinesi barıyla yapılan kalça itişi. Ağırlık kontrolü ve güvenlik açısından avantajlıdır.' },
   { id: 'ex-239', name: 'Dumbbell Hip Thrust', category: 'Bacak', description: 'Dambıl ile yapılan kalça itişi. Makine yokken alternatif olarak kullanılır.' },
-  { id: 'ex-240', name: 'B-Stance Hip Thrust', category: 'Bacak', description: 'Bir ayak önde, bir ayak hafif geride tutularak yapılan kalça itişi. Unilateral glute aktivasyonu sağlar.' }
+  { id: 'ex-240', name: 'B-Stance Hip Thrust', category: 'Bacak', description: 'Bir ayak önde, bir ayak hafif geride tutularak yapılan kalça itişi. Unilateral glute aktivasyonu sağlar.' },
+  ...DATASET_EXERCISES
 ];
 
 export const INITIAL_PROGRAMS: WorkoutProgram[] = [

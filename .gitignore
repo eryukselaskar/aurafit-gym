@@ -25,3 +25,8 @@ dist-ssr
 
 # Local test/debug artifacts
 .playwright-mcp/
+
+# Test/verification artifacts
+verify-*.png
+playwright-report/
+test-results/

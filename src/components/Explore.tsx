@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Compass, Heart, Download, Share2, Search, X, Check, User, Calendar, Dumbbell, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Compass, Heart, Download, Share2, Search, X, Check, User, Calendar, Dumbbell, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import type { PublicProgram, WorkoutProgram, WorkoutSession } from '../types';
 
 interface ExploreProps {
@@ -29,6 +29,8 @@ export const Explore: React.FC<ExploreProps> = ({
   const [isPublishing, setIsPublishing] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [previewProgram, setPreviewProgram] = useState<PublicProgram | null>(null);
+  const [activePreviewSessionIdx, setActivePreviewSessionIdx] = useState<number>(0);
 
   // Track which programs the user has already imported in this session to show checkmark
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
@@ -89,17 +91,20 @@ export const Explore: React.FC<ExploreProps> = ({
   };
 
   // Filter and Sort Programs
-  const filteredPrograms = publicPrograms
-    .filter(prog => 
-      prog.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      (prog.description && prog.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      prog.creatorName.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+  const filteredPrograms = (publicPrograms || [])
+    .filter(prog => {
+      const nameMatch = (prog.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const descMatch = prog.description ? prog.description.toLowerCase().includes(searchTerm.toLowerCase()) : false;
+      const creatorMatch = (prog.creatorName || '').toLowerCase().includes(searchTerm.toLowerCase());
+      return nameMatch || descMatch || creatorMatch;
+    })
     .sort((a, b) => {
       if (sortBy === 'popular') {
-        return b.upvotes - a.upvotes;
+        return (b.upvotes || 0) - (a.upvotes || 0);
       } else {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
       }
     });
 
@@ -173,18 +178,21 @@ export const Explore: React.FC<ExploreProps> = ({
         ) : (
           filteredPrograms.map((prog) => {
             const hasUpvoted = userId ? (prog.upvotedBy || []).includes(userId) : false;
-            const alreadyImported = importedIds.has(prog.id);
+            const alreadyImported = importedIds.has(prog.id) || (personalPrograms || []).some(p => 
+              p.name === prog.name && 
+              p.description === `Topluluktan kopyalandı (Yazar: ${prog.creatorName})`
+            );
             const isExpanded = expandedCard === prog.id;
 
-            const isMultiDay = prog.sessions && prog.sessions.length > 0;
+            const isMultiDay = !!(prog.sessions && prog.sessions.length > 0);
             const totalExercises = isMultiDay
-              ? prog.sessions!.reduce((sum, s) => sum + s.exercises.length, 0)
-              : prog.exercises.length;
+              ? (prog.sessions || []).reduce((sum, s) => sum + (s.exercises || []).length, 0)
+              : (prog.exercises || []).length;
             const totalSets = isMultiDay
-              ? prog.sessions!.reduce((sum, s) => sum + s.exercises.reduce((acc, e) => acc + e.sets.length, 0), 0)
-              : prog.exercises.reduce((sum, e) => sum + e.sets.length, 0);
+              ? (prog.sessions || []).reduce((sum, s) => sum + (s.exercises || []).reduce((acc, e) => acc + (e.sets || []).length, 0), 0)
+              : (prog.exercises || []).reduce((sum, e) => sum + (e.sets || []).length, 0);
 
-            const allItems = isMultiDay ? prog.sessions! : prog.exercises;
+            const allItems = isMultiDay ? (prog.sessions || []) : (prog.exercises || []);
             const previewItems = isExpanded ? allItems : allItems.slice(0, 3);
             const hasMore = !isExpanded && allItems.length > 3;
 
@@ -193,8 +201,8 @@ export const Explore: React.FC<ExploreProps> = ({
                 key={prog.id}
                 className="explore-program-card glass-panel"
                 style={{
-                  border: prog.upvotes > 0 ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid var(--border-light)',
-                  boxShadow: prog.upvotes > 0 ? '0 8px 30px rgba(139, 92, 246, 0.08)' : 'var(--shadow-md)'
+                  border: (prog.upvotes || 0) > 0 ? '1px solid rgba(139, 92, 246, 0.25)' : '1px solid var(--border-light)',
+                  boxShadow: (prog.upvotes || 0) > 0 ? '0 8px 30px rgba(139, 92, 246, 0.08)' : 'var(--shadow-md)'
                 }}
               >
                 <div className="explore-card-top-row">
@@ -202,13 +210,18 @@ export const Explore: React.FC<ExploreProps> = ({
                     <User size={14} className="creator-avatar" />
                     <span className="creator-name">{prog.creatorName}</span>
                   </div>
-                  <button
-                    onClick={() => handleUpvote(prog.id)}
-                    className={`btn-upvote ${hasUpvoted ? 'active-voted' : ''}`}
-                  >
-                    <Heart size={16} fill={hasUpvoted ? 'currentColor' : 'none'} />
-                    <span>{prog.upvotes}</span>
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="date-badge" style={{ fontSize: '11px', opacity: 0.7 }}>
+                      {new Date(prog.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                    </span>
+                    <button
+                      onClick={() => handleUpvote(prog.id)}
+                      className={`btn-upvote ${hasUpvoted ? 'active-voted' : ''}`}
+                    >
+                      <Heart size={16} fill={hasUpvoted ? 'currentColor' : 'none'} />
+                      <span>{prog.upvotes || 0}</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div className="explore-card-info">
@@ -220,7 +233,7 @@ export const Explore: React.FC<ExploreProps> = ({
                   <div className="explore-card-stats">
                     {isMultiDay ? (
                       <span className="badge badge-violet" style={{ fontSize: '10px', padding: '3px 8px' }}>
-                        {prog.sessions!.length} Günlük Program
+                        {(prog.sessions || []).length} Günlük Program
                       </span>
                     ) : (
                       <span className="badge badge-violet" style={{ fontSize: '10px', padding: '3px 8px' }}>
@@ -245,7 +258,7 @@ export const Explore: React.FC<ExploreProps> = ({
                           <Calendar size={13} className="ex-item-icon-violet" />
                           <span className="ex-item-name">{sess.name}</span>
                         </div>
-                        <span className="ex-item-sets-highlight-cyan">{sess.exercises.length} Hareket</span>
+                        <span className="ex-item-sets-highlight-cyan">{(sess.exercises || []).length} Hareket</span>
                       </div>
                     ))
                   ) : (
@@ -255,7 +268,7 @@ export const Explore: React.FC<ExploreProps> = ({
                           <Dumbbell size={13} className="ex-item-icon-cyan" />
                           <span className="ex-item-name">{ex.name}</span>
                         </div>
-                        <span className="ex-item-sets-highlight-amber">{ex.sets.length} Set</span>
+                        <span className="ex-item-sets-highlight-amber">{(ex.sets || []).length} Set</span>
                       </div>
                     ))
                   )}
@@ -273,16 +286,24 @@ export const Explore: React.FC<ExploreProps> = ({
                   )}
                 </div>
 
-                {/* Import action */}
-                <div className="explore-card-footer">
-                  <span className="date-badge">
-                    {new Date(prog.createdAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-                  </span>
+                {/* Import/Inspect actions */}
+                <div className="explore-card-footer" style={{ gap: '8px', display: 'flex' }}>
+                  <button
+                    onClick={() => {
+                      setPreviewProgram(prog);
+                      setActivePreviewSessionIdx(0);
+                    }}
+                    className="btn btn-sm btn-outline btn-inspect"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  >
+                    <Eye size={14} /> İncele
+                  </button>
 
                   <button
                     onClick={() => handleImport(prog)}
                     disabled={alreadyImported}
                     className={`btn btn-sm btn-import-routine ${alreadyImported ? 'imported' : 'btn-outline'}`}
+                    style={{ flex: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                   >
                     {alreadyImported ? (
                       <><Check size={14} /> Eklendi</>
@@ -355,6 +376,167 @@ export const Explore: React.FC<ExploreProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Program Preview Modal */}
+      {previewProgram && (
+        <div className="modal-backdrop">
+          <div className="modal-content glass-panel anim-slide-up" style={{ maxWidth: '600px', width: '95%' }}>
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title" style={{ fontSize: '22px', marginBottom: '2px' }}>{previewProgram.name}</h2>
+                <p style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: '700' }}>Sporcu: {previewProgram.creatorName}</p>
+              </div>
+              <button 
+                onClick={() => setPreviewProgram(null)} 
+                className="modal-close-btn"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px 0', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {previewProgram.description && (
+                <p style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', margin: '0 20px' }}>
+                  {previewProgram.description}
+                </p>
+              )}
+
+              {/* Stats row */}
+              <div style={{ display: 'flex', gap: '12px', margin: '0 20px', padding: '10px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Gün Sayısı</span>
+                  <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--accent-violet)' }}>
+                    {previewProgram.sessions && previewProgram.sessions.length > 0 ? previewProgram.sessions.length : 1}
+                  </span>
+                </div>
+                <div style={{ flex: 1, borderLeft: '1px solid var(--border-light)', borderRight: '1px solid var(--border-light)', textAlign: 'center' }}>
+                  <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Egzersizler</span>
+                  <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--accent-cyan)' }}>
+                    {previewProgram.sessions && previewProgram.sessions.length > 0
+                      ? previewProgram.sessions.reduce((sum, s) => sum + (s.exercises || []).length, 0)
+                      : (previewProgram.exercises || []).length}
+                  </span>
+                </div>
+                <div style={{ flex: 1, textAlign: 'center' }}>
+                  <span style={{ display: 'block', fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 'bold' }}>Toplam Set</span>
+                  <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--accent-pink)' }}>
+                    {previewProgram.sessions && previewProgram.sessions.length > 0
+                      ? previewProgram.sessions.reduce((sum, s) => sum + (s.exercises || []).reduce((acc, e) => acc + (e.sets || []).length, 0), 0)
+                      : (previewProgram.exercises || []).reduce((sum, e) => sum + (e.sets || []).length, 0)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Day selection or Exercise list */}
+              <div style={{ padding: '0 20px' }}>
+                {previewProgram.sessions && previewProgram.sessions.length > 0 ? (
+                  <>
+                    <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Program Günleri / Seanslar</label>
+                    <div className="session-tabs-container" style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '15px', WebkitOverflowScrolling: 'touch' }}>
+                      {previewProgram.sessions.map((sess, idx) => (
+                        <button
+                          key={sess.id || idx}
+                          type="button"
+                          onClick={() => setActivePreviewSessionIdx(idx)}
+                          className={`filter-badge ${activePreviewSessionIdx === idx ? 'active' : ''}`}
+                          style={{ whiteSpace: 'nowrap' }}
+                        >
+                          {sess.name}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Exercises of active session */}
+                    {previewProgram.sessions[activePreviewSessionIdx] && (
+                      <div className="preview-exercises-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
+                        {(previewProgram.sessions[activePreviewSessionIdx].exercises || []).map((ex, exIdx) => (
+                          <div key={ex.id || exIdx} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                              <span style={{ fontWeight: '700', color: '#fff', fontSize: '14px' }}>{ex.name}</span>
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Dinlenme: {ex.restTime} sn</span>
+                            </div>
+                            {ex.notes && (
+                              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '8px', borderLeft: '2px solid var(--accent-violet)', paddingLeft: '6px', margin: '4px 0 8px 0' }}>
+                                {ex.notes}
+                              </p>
+                            )}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '8px' }}>
+                              {ex.sets.map((set, setIdx) => (
+                                <div key={setIdx} style={{ fontSize: '11px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 'var(--radius-sm)', padding: '6px', textAlign: 'center' }}>
+                                  <span style={{ display: 'block', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '2px' }}>Set {setIdx + 1}</span>
+                                  <span style={{ display: 'block', color: '#fff' }}>{set.weight} kg x {set.reps} t</span>
+                                  {set.rir !== undefined && (
+                                    <span style={{ display: 'block', color: 'var(--accent-pink)', fontSize: '10px' }}>RIR {set.rir}</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>Egzersizler</label>
+                    <div className="preview-exercises-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '280px', overflowY: 'auto', paddingRight: '4px' }}>
+                      {(previewProgram.exercises || []).map((ex, exIdx) => (
+                        <div key={ex.id || exIdx} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <span style={{ fontWeight: '700', color: '#fff', fontSize: '14px' }}>{ex.name}</span>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Dinlenme: {ex.restTime} sn</span>
+                          </div>
+                          {ex.notes && (
+                            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', fontStyle: 'italic', marginBottom: '8px', borderLeft: '2px solid var(--accent-violet)', paddingLeft: '6px', margin: '4px 0 8px 0' }}>
+                              {ex.notes}
+                            </p>
+                          )}
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '8px' }}>
+                            {ex.sets.map((set, setIdx) => (
+                              <div key={setIdx} style={{ fontSize: '11px', background: 'rgba(0,0,0,0.2)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 'var(--radius-sm)', padding: '6px', textAlign: 'center' }}>
+                                <span style={{ display: 'block', fontWeight: 'bold', color: 'var(--text-muted)', marginBottom: '2px' }}>Set {setIdx + 1}</span>
+                                <span style={{ display: 'block', color: '#fff' }}>{set.weight} kg x {set.reps} t</span>
+                                {set.rir !== undefined && (
+                                  <span style={{ display: 'block', color: 'var(--accent-pink)', fontSize: '10px' }}>RIR {set.rir}</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer-actions" style={{ padding: '15px 20px', borderTop: '1px solid var(--border-light)' }}>
+              <button 
+                type="button" 
+                onClick={() => setPreviewProgram(null)} 
+                className="btn btn-secondary"
+              >
+                Kapat
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  handleImport(previewProgram);
+                  setPreviewProgram(null);
+                }}
+                disabled={(importedIds.has(previewProgram.id) || (personalPrograms || []).some(p => p.name === previewProgram.name && p.description === `Topluluktan kopyalandı (Yazar: ${previewProgram.creatorName})`))}
+                className="btn btn-primary"
+              >
+                {(importedIds.has(previewProgram.id) || (personalPrograms || []).some(p => p.name === previewProgram.name && p.description === `Topluluktan kopyalandı (Yazar: ${previewProgram.creatorName})`)) ? (
+                  <><Check size={16} /> Kütüphanede</>
+                ) : (
+                  <><Download size={16} /> Kütüphaneme Ekle</>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -690,6 +872,19 @@ export const Explore: React.FC<ExploreProps> = ({
           }
           .explore-programs-grid {
             grid-template-columns: 1fr;
+          }
+          .search-filter-section {
+            padding: 14px;
+          }
+        }
+        @media (max-width: 480px) {
+          .explore-card-footer {
+            flex-direction: column;
+            gap: 8px;
+          }
+          .explore-card-footer button {
+            width: 100% !important;
+            flex: none !important;
           }
         }
       `}</style>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Calendar, Clock, Award, ChevronDown, ChevronUp, Download, X } from 'lucide-react';
+import { Trash2, Calendar, Clock, Award, ChevronDown, ChevronUp, Share2, X } from 'lucide-react';
 import type { CompletedWorkout } from '../types';
 
 interface HistoryProps {
@@ -27,53 +27,75 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
     setConfirmDelete(null);
   };
 
-  const exportWeeklyCSV = () => {
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    // Sort chronologically
-    const weeklyWorkouts = history
-      .filter(w => new Date(w.date) >= sevenDaysAgo)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    
-    if (weeklyWorkouts.length === 0) {
-      alert("Son 7 güne ait tamamlanmış antrenman kaydı bulunamadı.");
-      return;
-    }
-    
-    let csvContent = "\uFEFF"; // UTF-8 BOM
-    csvContent += "Tarih,Antrenman Adı,Egzersiz,Set No,Hedef Ağırlık (kg),Hedef Tekrar,Hedef RIR,Gerçekleşen Ağırlık (kg),Gerçekleşen Tekrar,Gerçekleşen RIR,Durum\n";
-    
-    weeklyWorkouts.forEach(workout => {
-      const formattedDate = new Date(workout.date).toLocaleDateString('tr-TR');
-      const workoutName = workout.programName.replace(/"/g, '""');
-      
-      workout.exercises.forEach(ex => {
-        const exName = ex.name.replace(/"/g, '""');
-        
-        ex.sets.forEach((set, idx) => {
-          const targetWeight = set.weight;
-          const targetReps = set.reps;
-          const targetRir = set.rir !== undefined ? set.rir : "";
-          
-          const actualWeight = set.actualWeight !== undefined ? set.actualWeight : "";
-          const actualReps = set.actualReps !== undefined ? set.actualReps : "";
-          const actualRir = set.actualRir !== undefined ? set.actualRir : "";
-          const status = set.completed ? "Tamamlandı" : "Yapılmadı";
-          
-          csvContent += `"${formattedDate}","${workoutName}","${exName}",${idx + 1},${targetWeight},${targetReps},${targetRir},${actualWeight},${actualReps},${actualRir},"${status}"\n`;
-        });
+  // Tek bir antrenmanı CSV olarak native paylaşım menüsüyle (veya masaüstünde indirerek) paylaşır.
+  // navigator.share kullanır: <a download> blob'ları Capacitor'ın Android WebView'inde çalışmıyordu.
+  const shareWorkoutCSV = async (workout: CompletedWorkout, e: React.MouseEvent) => {
+    e.stopPropagation();
+
+    const escape = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
+    const rows = [
+      ['Egzersiz', 'Set No', 'Hedef Ağırlık (kg)', 'Hedef Tekrar', 'Hedef RIR', 'Gerçekleşen Ağırlık (kg)', 'Gerçekleşen Tekrar', 'Gerçekleşen RIR', 'Durum'].map(escape).join(',')
+    ];
+
+    workout.exercises.forEach(ex => {
+      ex.sets.forEach((set, idx) => {
+        // Tamamlanan setlerde girilmemiş alanlar hedef değere düşer (hacim hesabıyla aynı mantık),
+        // yapılmayan setlerde "-" kalır.
+        const actual = (actualVal?: number, targetVal?: number) =>
+          set.completed ? (actualVal ?? targetVal ?? '-') : (actualVal ?? '-');
+
+        rows.push([
+          ex.name,
+          idx + 1,
+          set.weight,
+          set.reps,
+          set.rir !== undefined ? set.rir : '-',
+          actual(set.actualWeight, set.weight),
+          actual(set.actualReps, set.reps),
+          actual(set.actualRir, set.rir),
+          set.completed ? 'Tamamlandı' : 'Yapılmadı'
+        ].map(escape).join(','));
       });
     });
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `AuraFit_Haftalik_Rapor_${new Date().toISOString().split('T')[0]}.csv`);
+
+    const csvContent = '﻿' + rows.join('\r\n');
+    // Dosya adı: tarih önce (kronolojik sıralanır), Türkçe karakterler ASCII'ye çevrilir.
+    // Paylaşım hedefleri (e-posta, Drive, WhatsApp) boşluk ve aksanlı karakterlerde sorun çıkarabiliyor.
+    const TR_MAP: Record<string, string> = {
+      ğ: 'g', Ğ: 'G', ü: 'u', Ü: 'U', ş: 's', Ş: 'S',
+      ı: 'i', İ: 'I', ö: 'o', Ö: 'O', ç: 'c', Ç: 'C'
+    };
+    const slug = workout.programName
+      .replace(/[ğĞüÜşŞıİöÖçÇ]/g, ch => TR_MAP[ch])
+      .replace(/[^a-zA-Z0-9]+/g, '-')   // harf/rakam dışındaki her şey tire
+      .replace(/-+/g, '-')              // ardışık tireleri sadeleştir
+      .replace(/^-|-$/g, '');           // baştaki/sondaki tireyi at
+    const fileName = `AuraFit_${workout.date}_${slug || 'antrenman'}.csv`;
+    const file = new File([csvContent], fileName, { type: 'text/csv' });
+    const shareData = {
+      title: `${workout.programName} - Antrenman Raporu`,
+      text: `${new Date(workout.date).toLocaleDateString('tr-TR')} tarihli antrenman: ${workout.totalVolume.toLocaleString('tr-TR')} kg hacim, ${workout.duration} dk.`,
+      files: [file]
+    };
+
+    if (navigator.canShare?.(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return; // kullanıcı paylaşımı iptal etti
+        // paylaşım başarısız oldu, indirmeye düş
+      }
+    }
+
+    const url = URL.createObjectURL(file);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -83,17 +105,8 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
       <header className="history-header">
         <div>
           <h1 className="history-title">Antrenman <span className="gradient-text">Geçmişim</span></h1>
-          <p className="history-subtitle">Tamamladığınız antrenmanların detaylı analizini ve istatistiklerini inceleyin.</p>
+          <p className="history-subtitle">Tamamladığınız antrenmanların detaylı analizini ve istatistiklerini inceleyin. Bir antrenmanı paylaşmak için kartındaki <Share2 size={12} style={{ verticalAlign: 'middle' }} /> ikonunu kullanın.</p>
         </div>
-        {history.length > 0 && (
-          <button 
-            onClick={exportWeeklyCSV}
-            className="btn btn-primary"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            <Download size={18} /> Haftalık Rapor Aktar (Excel)
-          </button>
-        )}
       </header>
 
       {/* History List */}
@@ -139,9 +152,18 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
                         <Award size={14} className="stat-pill-icon mint" />
                         <span>{workout.totalVolume.toLocaleString('tr-TR')} kg</span>
                       </div>
-                      <button 
-                        onClick={(e) => handleDelete(workout.id, workout.programName, e)} 
+                      <button
+                        onClick={(e) => shareWorkoutCSV(workout, e)}
                         className="btn-history-delete"
+                        aria-label="Antrenmanı paylaş"
+                        title="Antrenmanı paylaş (CSV)"
+                      >
+                        <Share2 size={16} />
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(workout.id, workout.programName, e)}
+                        className="btn-history-delete"
+                        aria-label="Antrenmanı sil"
                       >
                         <Trash2 size={16} />
                       </button>

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Dumbbell, FastForward, Check, X, Clock, Bell, Plus, ArrowRight, Play, Pause } from 'lucide-react';
 import type { WorkoutProgram, WorkoutExercise, CompletedWorkout, WorkoutSet, PersonalRecord } from '../types';
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import {
   startWorkoutService,
   stopWorkoutService,
@@ -25,6 +27,42 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   personalRecords,
   history
 }) => {
+  const scheduleRestNotification = async (seconds: number, nextExName: string) => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      const perm = await LocalNotifications.checkPermissions();
+      if (perm.display !== 'granted') {
+        await LocalNotifications.requestPermissions();
+      }
+      // Cancel previous notification if any
+      await LocalNotifications.cancel({ notifications: [{ id: 42 }] });
+      
+      // Schedule new one
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: "Dinlenme Süresi Bitti! 🏋️‍♂️",
+            body: `Sıradaki hareket: ${nextExName}`,
+            id: 42,
+            schedule: { at: new Date(Date.now() + seconds * 1000) },
+            sound: undefined
+          }
+        ]
+      });
+    } catch (e) {
+      console.warn("LocalNotifications failed to schedule:", e);
+    }
+  };
+
+  const cancelRestNotification = async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      await LocalNotifications.cancel({ notifications: [{ id: 42 }] });
+    } catch (e) {
+      console.warn("LocalNotifications failed to cancel:", e);
+    }
+  };
+
   // Helper to parse saved active workout state
   const getSavedWorkoutState = () => {
     try {
@@ -530,6 +568,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     if (navigator.vibrate) {
       navigator.vibrate([200, 100, 200]); // Short dynamic vibration
     }
+    cancelRestNotification();
     syncWithBackgroundService(exercises, false, 0);
     saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, undefined, undefined, null);
   };
@@ -539,6 +578,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     setIsResting(false);
     setRestStartTime(null);
     setRestSecondsLeft(0);
+    cancelRestNotification();
     syncWithBackgroundService(exercises, false, 0);
     saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, undefined, undefined, null);
   };
@@ -548,6 +588,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     setRestDuration(sec);
     setRestStartTime(now);
     setRestSecondsLeft(sec);
+    scheduleRestNotification(sec, currentRestExercise || "Sıradaki Egzersiz");
     syncWithBackgroundService(exercises, isResting, sec);
     saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, isResting, sec, sec, currentRestExercise, undefined, undefined, now);
   };
@@ -581,6 +622,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
       setRestStartTime(now);
       setRestSecondsLeft(targetEx.restTime);
       setIsResting(true);
+      scheduleRestNotification(targetEx.restTime, targetEx.name);
 
       syncWithBackgroundService(updated, true, targetEx.restTime);
       saveWorkoutState(updated, isTimerRunning, elapsedSeconds, true, targetEx.restTime, targetEx.restTime, targetEx.name, undefined, undefined, now);
@@ -588,6 +630,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
       setIsResting(false);
       setRestStartTime(null);
       setRestSecondsLeft(0);
+      cancelRestNotification();
       syncWithBackgroundService(updated, false, 0);
       saveWorkoutState(updated, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, undefined, undefined, null);
     }
@@ -666,6 +709,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   };
 
   const doFinishWorkout = () => {
+    cancelRestNotification();
 
     // Calculate volume: only count completed sets
     let totalVolume = 0;
@@ -738,7 +782,11 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   const handleCancelWorkout = () => {
     setConfirmModal({
       message: 'Mevcut antrenmanı iptal etmek istediğinizden emin misiniz? Kaydedilmemiş verileriniz kaybolacaktır.',
-      onConfirm: () => { setConfirmModal(null); cancelWorkout(); }
+      onConfirm: () => { 
+        setConfirmModal(null); 
+        cancelRestNotification();
+        cancelWorkout(); 
+      }
     });
   };
 
@@ -760,7 +808,12 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           <div className="active-badge pulse-glowing-mint">
             <span>● CANLI SEANS</span>
           </div>
-          <h1 className="active-program-title">{activeProgram.name}</h1>
+          {activeProgram.parentName && (
+            <span className="active-parent-name">{activeProgram.parentName}</span>
+          )}
+          <h1 className="active-program-title" title={activeProgram.name}>
+            {activeProgram.sessionName || activeProgram.name}
+          </h1>
         </div>
 
         <div className="header-timer" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -803,7 +856,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
 
       {/* Main Grid: Exercises on left, Rest timer floating on right */}
       <div className="active-workout-layout">
-        <div className="exercises-scroller">
+        <div className={`exercises-scroller ${isResting ? 'rest-bar-visible' : ''}`}>
           {exercises.map((ex, exIdx) => (
 
             <div key={ex.id} className="active-exercise-card glass-panel">
@@ -1139,10 +1192,24 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           100% { opacity: 0.7; }
         }
 
+        .active-parent-name {
+          display: block;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: var(--text-muted);
+          margin-bottom: 2px;
+        }
+
         .active-program-title {
           font-size: 22px;
           font-weight: 800;
           letter-spacing: -0.02em;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
         }
 
         .header-timer {
@@ -1499,12 +1566,17 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
             -webkit-backdrop-filter: blur(20px) !important;
             min-height: auto !important;
           }
+          /* Reserve space so the fixed rest-timer bar never hides the active set */
+          .exercises-scroller.rest-bar-visible {
+            padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+          }
         }
 
         /* Desktop/Mobile Visibility Utilities */
         @media (min-width: 769px) {
           .desktop-only { display: block !important; }
           .mobile-only { display: none !important; }
+          .active-table-row.desktop-only { display: grid !important; }
         }
         @media (max-width: 768px) {
           .desktop-only { display: none !important; }
@@ -1831,15 +1903,14 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           top: 0;
           left: 0;
           width: 100vw;
-          height: 100vh;
+          height: 100dvh;
           background: rgba(9, 10, 15, 0.95);
           display: flex;
           flex-direction: column;
           align-items: center;
-          justify-content: center;
           z-index: 2000;
-          padding: 20px;
-          overflow: hidden;
+          padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)) 20px;
+          overflow-y: auto;
           animation: fadeIn 0.3s ease-out;
         }
 
@@ -1855,6 +1926,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           position: relative;
           box-shadow: 0 0 45px rgba(139, 92, 246, 0.3);
           border: 1px solid var(--accent-violet);
+          margin: auto 0;
         }
 
         .pr-congrats-title {
@@ -1910,6 +1982,34 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           font-size: 12px;
           color: var(--accent-pink);
           font-weight: 600;
+        }
+
+        /* Mobilde kutlama kartını kompaktlaştır: birden fazla PR kırıldığında bile
+           "Kaydet ve Devam Et" butonu ilk açılışta ekranda kalsın. */
+        @media (max-width: 768px) {
+          .celebration-card {
+            padding: 24px 20px;
+            gap: 12px;
+          }
+          .pr-trophy {
+            font-size: 38px;
+          }
+          .pr-congrats-title {
+            font-size: 21px;
+          }
+          .pr-broken-list {
+            max-height: 34vh;
+            margin: 4px 0;
+            gap: 8px;
+          }
+          .pr-broken-item {
+            padding: 10px;
+          }
+          /* Son çare: kart yine de taşarsa buton kaydırma alanının altına yapışsın */
+          .celebration-card > .btn {
+            position: sticky;
+            bottom: 0;
+          }
         }
 
         /* Confetti particles */
