@@ -3,6 +3,7 @@ import { Dumbbell, FastForward, Check, X, Clock, Bell, Plus, ArrowRight, Play, P
 import type { WorkoutProgram, WorkoutExercise, CompletedWorkout, WorkoutSet, PersonalRecord } from '../types';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import { formatRepTarget } from '../utils/repTarget';
 import {
   startWorkoutService,
   stopWorkoutService,
@@ -902,7 +903,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                     <div className={`active-table-row data desktop-only ${set.completed ? 'set-done' : ''}`}>
                       <span className="set-num">{setIdx + 1}</span>
                       <div style={{ textAlign: 'left' }}>
-                        <span className="set-target">{set.weight}kg x {ex.minReps && ex.maxReps ? `${ex.minReps}-${ex.maxReps} tek` : `${set.reps} tek`} {set.rir !== undefined ? `@RIR${set.rir}` : ''}</span>
+                        <span className="set-target">{set.weight}kg x {formatRepTarget(ex, set)} tek {set.rir !== undefined ? `@RIR${set.rir}` : ''}</span>
                         {lastHint && <div style={{ fontSize: '10px', color: 'var(--accent-mint)', fontWeight: 700, marginTop: '2px' }}>↩ {lastHint}</div>}
                       </div>
 
@@ -986,7 +987,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                             </button>
                           )}
                         </div>
-                        <span className="set-target-desc">Hedef: {set.weight}kg x {ex.minReps && ex.maxReps ? `${ex.minReps}-${ex.maxReps} tek` : `${set.reps} tek`}</span>
+                        <span className="set-target-desc">Hedef: {set.weight}kg x {formatRepTarget(ex, set)} tek</span>
                         {lastHint && <span style={{ fontSize: '10px', color: 'var(--accent-mint)', fontWeight: 700 }}>↩ {lastHint}</span>}
                       </div>
 

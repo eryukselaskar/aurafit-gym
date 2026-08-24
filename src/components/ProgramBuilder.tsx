@@ -5,6 +5,7 @@ import { DndContext, closestCenter } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { formatRepTarget, validateRepRange } from '../utils/repTarget';
 
 
 interface SortableExCardProps {
@@ -91,9 +92,9 @@ const SortableExerciseCard: React.FC<SortableExCardProps> = ({
         {ex.sets.map((set, setIdx) => (
           <div key={set.id} className="builder-set-row">
             <span className="set-number-label">{setIdx + 1}</span>
-            {ex.minReps && ex.maxReps ? (
+            {ex.minReps !== undefined && ex.maxReps !== undefined ? (
               <span className="set-readonly-badge" title="Egzersiz seviyesinde Min-Max tekrar ayarlandığı için bu değer sabitlenmiştir.">
-                {ex.minReps}-{ex.maxReps}
+                {formatRepTarget(ex, set)}
               </span>
             ) : (
               <input type="number" min="1" max="100" value={set.reps}
@@ -275,11 +276,9 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
   };
 
   const handleSessionNameChange = (name: string) => {
-    const updated = [...programSessions];
-    if (updated[activeSessionIndex]) {
-      updated[activeSessionIndex].name = name;
-      setProgramSessions(updated);
-    }
+    setProgramSessions(prev => prev.map((sess, i) =>
+      i === activeSessionIndex ? { ...sess, name } : sess
+    ));
   };
   const handleAddExerciseToProgram = (exercise: Exercise) => {
     const newWorkoutExercise: WorkoutExercise = {
@@ -295,15 +294,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
       ]
     };
 
-    if (isBundleProgram) {
-      const updated = [...programSessions];
-      if (updated[activeSessionIndex]) {
-        updated[activeSessionIndex].exercises.push(newWorkoutExercise);
-        setProgramSessions(updated);
-      }
-    } else {
-      setProgramExercises([...programExercises, newWorkoutExercise]);
-    }
+    updateExercises(list => [...list, newWorkoutExercise]);
     setShowExerciseSelector(false);
     setSearchTerm('');
   };
@@ -428,6 +419,16 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
         setFormError('Lütfen programa en az bir egzersiz ekleyin.');
         return;
       }
+    }
+
+    // Min > Max gibi tutarsız hedef aralıkları sessizce kaydediliyordu ("20-5 tekrar").
+    const allExercises = isBundleProgram
+      ? programSessions.flatMap(s => s.exercises)
+      : programExercises;
+    const rangeError = allExercises.map(validateRepRange).find(Boolean);
+    if (rangeError) {
+      setFormError(rangeError);
+      return;
     }
 
     const saved: WorkoutProgram = {
@@ -1268,7 +1269,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px', alignItems: 'center' }}>
                         {ex.sets.map((set, sIdx) => (
                           <div key={set.id} style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.03)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
-                            S{sIdx + 1}: {ex.minReps && ex.maxReps ? `${ex.minReps}-${ex.maxReps} tekrar` : `${set.reps} tekrar`} x {set.weight}kg {set.rir !== undefined && `[RIR ${set.rir}]`}
+                            S{sIdx + 1}: {formatRepTarget(ex, set)} tekrar x {set.weight}kg {set.rir !== undefined && `[RIR ${set.rir}]`}
                           </div>
                         ))}
                         <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
@@ -1311,7 +1312,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px', alignItems: 'center' }}>
                     {ex.sets.map((set, sIdx) => (
                       <div key={set.id} style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.03)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
-                        S{sIdx + 1}: {ex.minReps && ex.maxReps ? `${ex.minReps}-${ex.maxReps} tekrar` : `${set.reps} tekrar`} x {set.weight}kg {set.rir !== undefined && `[RIR ${set.rir}]`}
+                        S{sIdx + 1}: {formatRepTarget(ex, set)} tekrar x {set.weight}kg {set.rir !== undefined && `[RIR ${set.rir}]`}
                       </div>
                     ))}
                     <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
