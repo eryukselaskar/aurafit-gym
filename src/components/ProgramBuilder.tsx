@@ -1344,7 +1344,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
         </div>
       )}
 
-      <style>{`.pb-modal-backdrop { position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);display:flex;align-items:flex-end;justify-content:center;z-index:2100; } .pb-modal-box { width:100%;max-width:400px;background:var(--bg-card-solid);border-top-left-radius:var(--radius-lg);border-top-right-radius:var(--radius-lg);padding:30px 24px calc(30px + env(safe-area-inset-bottom,0px)) 24px;box-shadow:0 -10px 40px rgba(0,0,0,0.5); }`}</style>
+      {/* pb-modal stilleri index.css'te tanımlı (ekran ortasında açılır). */}
       </>
     );
   }

@@ -1748,18 +1748,24 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
         }
 
         /* Bottom Sheet Modal */
+        /* Ekranın ortasında açılır. Önceden alta yapışıyordu (align-items: flex-end);
+           Android WebView'de env(safe-area-inset-bottom) 0 döndüğü için butonlar
+           jest çubuğunun altında kalıp görünmez oluyordu. */
         .bottom-sheet-backdrop {
           position: fixed;
           top: 0;
           left: 0;
           width: 100vw;
-          height: 100vh;
+          height: 100dvh;
           background: rgba(0, 0, 0, 0.6);
           backdrop-filter: blur(8px);
           -webkit-backdrop-filter: blur(8px);
           display: flex;
-          align-items: flex-end;
+          align-items: center;
           justify-content: center;
+          padding: 16px;
+          padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+          overflow-y: auto;
           z-index: 2100;
           animation: fadeIn 0.3s ease-out;
         }
@@ -1767,26 +1773,23 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
         .bottom-sheet-content {
           width: 100%;
           max-width: 500px;
+          max-height: 88dvh;
+          overflow-y: auto;
+          margin: auto 0;
           background: var(--bg-card-solid);
-          border-top: 1px solid var(--border-medium);
-          border-left: 1px solid var(--border-medium);
-          border-right: 1px solid var(--border-medium);
-          border-bottom: none;
-          border-top-left-radius: var(--radius-lg);
-          border-top-right-radius: var(--radius-lg);
-          border-bottom-left-radius: 0;
-          border-bottom-right-radius: 0;
-          padding: 30px 24px calc(30px + env(safe-area-inset-bottom, 0px)) 24px;
+          border: 1px solid var(--border-medium);
+          border-radius: var(--radius-lg);
+          padding: 26px 22px;
           display: flex;
           flex-direction: column;
           gap: 24px;
-          box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
-          animation: slideUpSheet 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+          animation: popInSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        @keyframes slideUpSheet {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
+        @keyframes popInSheet {
+          from { transform: scale(0.94); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
         }
 
         .bottom-sheet-header {
