@@ -67,7 +67,6 @@ kimlik bilgisini `/api/auth-callback`'e gönderir → `state` doğrulanır ve
 ## Firebase
 
 ```bash
-firebase use <proje-id>            # .firebaserc boş, önce bunu ayarla
 firebase deploy --only firestore:rules
 firebase deploy --only hosting
 ```
