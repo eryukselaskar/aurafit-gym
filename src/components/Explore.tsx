@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Compass, Heart, Download, Share2, Search, X, Check, User, Calendar, Dumbbell, CheckCircle, AlertCircle, ChevronDown, ChevronUp, Eye } from 'lucide-react';
 import type { PublicProgram, WorkoutProgram, WorkoutSession } from '../types';
 
@@ -24,7 +24,12 @@ export const Explore: React.FC<ExploreProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('popular');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [selectedProgToShare, setSelectedProgToShare] = useState<WorkoutProgram | null>(null);
+  // Kullanıcı henüz seçim yapmadıysa ilk program varsayılan olur. Bu değer
+  // render sırasında türetilir; effect + setState ile senkronlamak fazladan
+  // render turuna yol açıyordu.
+  const [pickedProgToShare, setPickedProgToShare] = useState<WorkoutProgram | null>(null);
+  const selectedProgToShare = pickedProgToShare ?? personalPrograms[0] ?? null;
+  const setSelectedProgToShare = setPickedProgToShare;
   const [creatorName, setCreatorName] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
@@ -39,13 +44,6 @@ export const Explore: React.FC<ExploreProps> = ({
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   }, []);
-
-  // Reset selected program to share when modal closes
-  useEffect(() => {
-    if (personalPrograms.length > 0 && !selectedProgToShare) {
-      setSelectedProgToShare(personalPrograms[0]);
-    }
-  }, [personalPrograms, selectedProgToShare]);
 
   const handleShareSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

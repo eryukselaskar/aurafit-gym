@@ -14,7 +14,7 @@ test.describe('External Auth Callback Debugger', () => {
     await page.waitForTimeout(1000);
 
     // Verify handleExternalAuth is registered on window
-    const callbackExists = await page.evaluate(() => typeof (window as any).handleExternalAuth === 'function');
+    const callbackExists = await page.evaluate(() => typeof (window as unknown as { handleExternalAuth?: unknown }).handleExternalAuth === 'function');
     console.log(`Is handleExternalAuth registered? ${callbackExists}`);
     expect(callbackExists).toBe(true);
 
@@ -22,7 +22,7 @@ test.describe('External Auth Callback Debugger', () => {
     console.log('Invoking handleExternalAuth...');
     const result = await page.evaluate(async () => {
       try {
-        await (window as any).handleExternalAuth({
+        await (window as unknown as { handleExternalAuth: (c: Record<string, unknown>) => Promise<void> }).handleExternalAuth({
           uid: 'debug-uid-123',
           email: 'debug@aurafit.com',
           displayName: 'Debug User',
@@ -30,8 +30,8 @@ test.describe('External Auth Callback Debugger', () => {
           idToken: 'debug-fake-token'
         });
         return { success: true };
-      } catch (err: any) {
-        return { success: false, error: err.message };
+      } catch (err: unknown) {
+        return { success: false, error: err instanceof Error ? err.message : String(err) };
       }
     });
 

@@ -111,7 +111,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     try {
       const normalized = dateStr.includes('T') ? dateStr : dateStr.replace(/-/g, '/');
       return new Date(normalized).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' });
-    } catch (e) {
+    } catch {
       return dateStr;
     }
   };

@@ -1,5 +1,11 @@
 import { registerPlugin, Capacitor } from '@capacitor/core';
 
+export type WorkoutAction = 'pause' | 'resume' | 'finish' | 'skipRest';
+
+export interface WorkoutActionListener {
+  remove(): void;
+}
+
 export interface WorkoutServicePlugin {
   startWorkout(options: { workoutName: string; elapsedSeconds: number }): Promise<void>;
   updateWorkout(options: { workoutName: string; isResting?: boolean; restSecondsLeft?: number }): Promise<void>;
@@ -7,6 +13,10 @@ export interface WorkoutServicePlugin {
   pauseWorkout(): Promise<void>;
   resumeWorkout(options: { elapsedSeconds: number }): Promise<void>;
   requestNotificationPermission(): Promise<{ status: string }>;
+  addListener?(
+    eventName: 'workoutAction',
+    callback: (data: { action: WorkoutAction }) => void
+  ): WorkoutActionListener;
 }
 
 let WorkoutServiceRaw: WorkoutServicePlugin | null = null;
@@ -71,13 +81,12 @@ export const resumeWorkoutService = async (elapsedSeconds: number) => {
 };
 
 export const addWorkoutServiceListener = (
-  callback: (data: { action: 'pause' | 'resume' | 'finish' }) => void
-) => {
+  callback: (data: { action: WorkoutAction }) => void
+): WorkoutActionListener | null => {
   if (WorkoutServiceRaw && Capacitor.isNativePlatform()) {
     try {
-      const plugin = WorkoutServiceRaw as any;
-      if (plugin.addListener) {
-        return plugin.addListener('workoutAction', callback);
+      if (WorkoutServiceRaw.addListener) {
+        return WorkoutServiceRaw.addListener('workoutAction', callback);
       }
     } catch (e) {
       console.error("Failed to add listener to WorkoutService:", e);

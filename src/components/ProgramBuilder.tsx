@@ -6,6 +6,7 @@ import type { DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { formatRepTarget, validateRepRange } from '../utils/repTarget';
+import { createId } from '../utils/id';
 
 
 interface SortableExCardProps {
@@ -282,7 +283,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
   };
   const handleAddExerciseToProgram = (exercise: Exercise) => {
     const newWorkoutExercise: WorkoutExercise = {
-      id: `we-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: createId('we'),
       exerciseId: exercise.id,
       name: exercise.name,
       category: exercise.category,
@@ -290,7 +291,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
       minReps: 6,
       maxReps: 12,
       sets: [
-        { id: `s-${Date.now()}-1`, reps: 10, weight: 20, rir: 2, completed: false }
+        { id: createId('s'), reps: 10, weight: 20, rir: 2, completed: false }
       ]
     };
 

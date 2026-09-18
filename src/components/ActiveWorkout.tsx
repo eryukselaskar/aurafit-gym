@@ -4,6 +4,8 @@ import type { WorkoutProgram, WorkoutExercise, CompletedWorkout, WorkoutSet, Per
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { formatRepTarget } from '../utils/repTarget';
+import { calculatePersonalRecords } from '../utils/personalRecords';
+import { now } from '../utils/id';
 import {
   startWorkoutService,
   stopWorkoutService,
@@ -21,6 +23,34 @@ interface ActiveWorkoutProps {
   history: CompletedWorkout[];
 }
 
+// Programın egzersizlerini yeni bir seans için sıfırlar (girilen değerler ve
+// tamamlanma işaretleri temizlenir).
+const freshExercises = (program: WorkoutProgram): WorkoutExercise[] =>
+  program.exercises.map(ex => ({
+    ...ex,
+    sets: ex.sets.map(s => ({
+      ...s,
+      actualReps: undefined,
+      actualWeight: undefined,
+      actualRir: undefined,
+      completed: false
+    }))
+  }));
+
+// Kaydedilmiş aktif antrenman durumunu okur. Bileşen state'ine bağlı olmadığı için
+// modül kapsamındadır; böylece useState başlatıcıları güvenle çağırabilir.
+const getSavedWorkoutState = () => {
+  try {
+    const saved = localStorage.getItem('aurafit_workout_active_state');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error("Failed to parse saved active workout state:", e);
+  }
+  return null;
+};
+
 export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   activeProgram,
   finishWorkout,
@@ -28,93 +58,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   personalRecords,
   history
 }) => {
-  const scheduleRestNotification = async (seconds: number, nextExName: string) => {
-    if (!Capacitor.isNativePlatform()) return;
-    try {
-      const perm = await LocalNotifications.checkPermissions();
-      if (perm.display !== 'granted') {
-        await LocalNotifications.requestPermissions();
-      }
-      // Cancel previous notification if any
-      await LocalNotifications.cancel({ notifications: [{ id: 42 }] });
-      
-      // Schedule new one
-      await LocalNotifications.schedule({
-        notifications: [
-          {
-            title: "Dinlenme Süresi Bitti! 🏋️‍♂️",
-            body: `Sıradaki hareket: ${nextExName}`,
-            id: 42,
-            schedule: { at: new Date(Date.now() + seconds * 1000) },
-            sound: undefined
-          }
-        ]
-      });
-    } catch (e) {
-      console.warn("LocalNotifications failed to schedule:", e);
-    }
-  };
-
-  const cancelRestNotification = async () => {
-    if (!Capacitor.isNativePlatform()) return;
-    try {
-      await LocalNotifications.cancel({ notifications: [{ id: 42 }] });
-    } catch (e) {
-      console.warn("LocalNotifications failed to cancel:", e);
-    }
-  };
-
-  // Helper to parse saved active workout state
-  const getSavedWorkoutState = () => {
-    try {
-      const saved = localStorage.getItem('aurafit_workout_active_state');
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error("Failed to parse saved active workout state:", e);
-    }
-    return null;
-  };
-
-  // Helper to save active workout state to localStorage
-  const saveWorkoutState = (
-    currentExercises = exercises,
-    running = isTimerRunning,
-    currentElapsed = elapsedSeconds,
-    resting = isResting,
-    restLeft = restSecondsLeft,
-    restDur = restDuration,
-    restEx = currentRestExercise,
-    customStartTime?: number,
-    customAccumulated?: number,
-    customRestStartTime?: number | null
-  ) => {
-    try {
-      const saved = getSavedWorkoutState();
-      const startTime = customStartTime !== undefined ? customStartTime : timerStartTime;
-      const accumulated = customAccumulated !== undefined ? customAccumulated : accumulatedSeconds;
-      const restStart = customRestStartTime !== undefined ? customRestStartTime : (resting ? (saved?.restStartTime || Date.now()) : null);
-      void currentElapsed;
-
-      const state = {
-        activeProgram,
-        exercises: currentExercises,
-        isTimerRunning: running,
-        workoutStartTime: startTime,
-        accumulatedTime: accumulated,
-        isResting: resting,
-        restDuration: restDur,
-        restSecondsLeft: restLeft,
-        restStartTime: restStart,
-        currentRestExercise: restEx
-      };
-      localStorage.setItem('aurafit_workout_active_state', JSON.stringify(state));
-    } catch (e) {
-      console.error("Failed to save active workout state:", e);
-    }
-  };
-
+  // --- State ---
   const [timerStartTime, setTimerStartTime] = useState<number>(() => {
     const saved = getSavedWorkoutState();
     if (saved && saved.activeProgram?.id === activeProgram.id) {
@@ -150,7 +94,10 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     if (saved && saved.exercises && saved.exercises.length > 0 && saved.activeProgram?.id === activeProgram.id) {
       return saved.exercises;
     }
-    return [];
+    // Yeni seans: programın setlerini sıfırlanmış halde başlat. (Önceden bu
+    // mount effect'i içinde setExercises ile yapılıyor, fazladan render'a yol
+    // açıyordu.)
+    return freshExercises(activeProgram);
   });
 
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(() => {
@@ -161,46 +108,225 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     return true;
   });
 
-  const timerIntervalRef = useRef<any>(null);
-  const saveDebounceRef = useRef<any>(null);
+  const timerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const saveDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Refs to avoid stale closures in listeners
-  const handleFinishWorkoutRef = useRef<any>(null);
-  const skipRestRef = useRef<any>(null);
+  const handleFinishWorkoutRef = useRef<(() => void) | null>(null);
+  const skipRestRef = useRef<(() => void) | null>(null);
+
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [newPRs, setNewPRs] = useState<PersonalRecord[]>([]);
+  const [completedWorkoutData, setCompletedWorkoutData] = useState<CompletedWorkout | null>(null);
+  const [workoutNote, setWorkoutNote] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
+
+  // Mobile set slider picker state
+  const [activeSetEdit, setActiveSetEdit] = useState<{ exIdx: number; setIdx: number } | null>(null);
+
+  // Rest timer states
+  const [isResting, setIsResting] = useState<boolean>(() => {
+    const saved = getSavedWorkoutState();
+    if (saved && saved.activeProgram?.id === activeProgram.id) {
+      return saved.isResting || false;
+    }
+    return false;
+  });
+  const [restDuration, setRestDuration] = useState<number>(() => {
+    const saved = getSavedWorkoutState();
+    if (saved && saved.activeProgram?.id === activeProgram.id) {
+      return saved.restDuration || 60;
+    }
+    return 60;
+  });
+  const [restSecondsLeft, setRestSecondsLeft] = useState<number>(() => {
+    const saved = getSavedWorkoutState();
+    if (saved && saved.activeProgram?.id === activeProgram.id && saved.isResting) {
+      const elapsedRest = Math.floor((Date.now() - (saved.restStartTime || Date.now())) / 1000);
+      return Math.max(0, (saved.restSecondsLeft || 0) - elapsedRest);
+    }
+    return 0;
+  });
+  const [restStartTime, setRestStartTime] = useState<number | null>(() => {
+    const saved = getSavedWorkoutState();
+    if (saved && saved.activeProgram?.id === activeProgram.id) {
+      return saved.restStartTime || null;
+    }
+    return null;
+  });
+  const [currentRestExercise, setCurrentRestExercise] = useState<string>(() => {
+    const saved = getSavedWorkoutState();
+    if (saved && saved.activeProgram?.id === activeProgram.id) {
+      return saved.currentRestExercise || '';
+    }
+    return '';
+  });
+  
+  const restIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // --- Yardımcılar ---
+  const scheduleRestNotification = async (seconds: number, nextExName: string) => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      const perm = await LocalNotifications.checkPermissions();
+      if (perm.display !== 'granted') {
+        await LocalNotifications.requestPermissions();
+      }
+      // Cancel previous notification if any
+      await LocalNotifications.cancel({ notifications: [{ id: 42 }] });
+      
+      // Schedule new one
+      await LocalNotifications.schedule({
+        notifications: [
+          {
+            title: "Dinlenme Süresi Bitti! 🏋️‍♂️",
+            body: `Sıradaki hareket: ${nextExName}`,
+            id: 42,
+            schedule: { at: new Date(now() + seconds * 1000) },
+            sound: undefined
+          }
+        ]
+      });
+    } catch (e) {
+      console.warn("LocalNotifications failed to schedule:", e);
+    }
+  };
+
+  const cancelRestNotification = async () => {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+      await LocalNotifications.cancel({ notifications: [{ id: 42 }] });
+    } catch (e) {
+      console.warn("LocalNotifications failed to cancel:", e);
+    }
+  };
+
+  // Helper to save active workout state to localStorage
+  // Not: tüm çağrılar ilk yedi argümanı açıkça geçer. Daha önce burada bulunan
+  // varsayılan değerler bileşenin ~400 satır aşağısında tanımlanan state'lere
+  // bakıyordu (TDZ riski) ve hiçbir zaman değerlendirilmiyordu; kaldırıldı.
+  const saveWorkoutState = (
+    currentExercises: WorkoutExercise[],
+    running: boolean,
+    currentElapsed: number,
+    resting: boolean,
+    restLeft: number,
+    restDur: number,
+    restEx: string,
+    customStartTime?: number,
+    customAccumulated?: number,
+    customRestStartTime?: number | null
+  ) => {
+    try {
+      const saved = getSavedWorkoutState();
+      const startTime = customStartTime !== undefined ? customStartTime : timerStartTime;
+      const accumulated = customAccumulated !== undefined ? customAccumulated : accumulatedSeconds;
+      const restStart = customRestStartTime !== undefined ? customRestStartTime : (resting ? (saved?.restStartTime || Date.now()) : null);
+      void currentElapsed;
+
+      const state = {
+        activeProgram,
+        exercises: currentExercises,
+        isTimerRunning: running,
+        workoutStartTime: startTime,
+        accumulatedTime: accumulated,
+        isResting: resting,
+        restDuration: restDur,
+        restSecondsLeft: restLeft,
+        restStartTime: restStart,
+        currentRestExercise: restEx
+      };
+      localStorage.setItem('aurafit_workout_active_state', JSON.stringify(state));
+    } catch (e) {
+      console.error("Failed to save active workout state:", e);
+    }
+  };
+
+
+
+
 
   // Initialize program copy with actual fields filled OR restore saved state
+  // Aşağıdaki yardımcılar effect'lerden çağrıldığı için onlardan önce tanımlanır.
+  // Helper to construct dynamic progress string for notification
+  const getProgressString = (currentExercises: WorkoutExercise[]) => {
+    const total = currentExercises.length;
+    const completed = currentExercises.filter(ex => ex.sets.every(s => s.completed)).length;
+    const activeEx = currentExercises.find(ex => !ex.sets.every(s => s.completed)) || currentExercises[total - 1];
+    const activeName = activeEx ? activeEx.name : '';
+    return {
+      title: `${completed}/${total} Egzersiz • ${activeName}`,
+      progressText: `${completed}/${total} Egzersiz Tamamlandı`
+    };
+  };
+
+  // Sync React state updates to Background Notification
+  const syncWithBackgroundService = (
+    currentExercises = exercises,
+    resting = isResting,
+    secondsLeft = restSecondsLeft
+  ) => {
+    if (currentExercises.length === 0) return;
+    const { title } = getProgressString(currentExercises);
+    updateWorkoutService(title, resting, secondsLeft);
+  };
+
+  // Synthesize dynamic chime when rest finishes using Web Audio API
+  const playSynthesizedChime = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      
+      const playTone = (freq: number, start: number, dur: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.12, start);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + dur);
+      };
+
+      // Play a beautiful 3-tone ascending arpeggio (C5 -> E5 -> G5)
+      const now = ctx.currentTime;
+      playTone(523.25, now, 0.2);       // C5
+      playTone(659.25, now + 0.15, 0.25);  // E5
+      playTone(783.99, now + 0.3, 0.45);   // G5
+    } catch (e) {
+      console.warn("AudioContext failed to play sound due to user interaction restrictions:", e);
+    }
+  };
+
+  const handleRestComplete = () => {
+    setIsResting(false);
+    setRestStartTime(null);
+    playSynthesizedChime();
+    if (navigator.vibrate) {
+      navigator.vibrate([200, 100, 200]); // Short dynamic vibration
+    }
+    cancelRestNotification();
+    syncWithBackgroundService(exercises, false, 0);
+    saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, undefined, undefined, null);
+  };
+
   useEffect(() => {
     const saved = getSavedWorkoutState();
-    let initialElapsed = 0;
-    
+
     if (saved && saved.activeProgram?.id === activeProgram.id && saved.exercises && saved.exercises.length > 0) {
-      if (saved.isTimerRunning) {
-        const diff = Math.floor((Date.now() - saved.workoutStartTime) / 1000);
-        initialElapsed = (saved.accumulatedTime || 0) + Math.max(0, diff);
-      } else {
-        initialElapsed = saved.accumulatedTime || 0;
-      }
+      const initialElapsed = saved.isTimerRunning
+        ? (saved.accumulatedTime || 0) + Math.max(0, Math.floor((now() - saved.workoutStartTime) / 1000))
+        : (saved.accumulatedTime || 0);
       
       startWorkoutService(activeProgram.name, initialElapsed);
       if (!saved.isTimerRunning) {
         pauseWorkoutService();
       }
     } else {
-      const initialized = activeProgram.exercises.map(ex => {
-        return {
-          ...ex,
-          sets: ex.sets.map(s => {
-            return {
-              ...s,
-              actualReps: undefined,
-              actualWeight: undefined,
-              actualRir: undefined,
-              completed: false
-            };
-          })
-        };
-      });
-      setExercises(initialized);
+      const initialized = freshExercises(activeProgram);
       startWorkoutService(activeProgram.name, 0);
       
       try {
@@ -217,7 +343,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           currentRestExercise: ''
         };
         localStorage.setItem('aurafit_workout_active_state', JSON.stringify(state));
-      } catch (e) {}
+      } catch { /* localStorage erişilemiyor; oturum durumu kaydedilemedi */ }
     }
 
     setTimeout(() => {
@@ -263,6 +389,8 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
         }
       }
     };
+    // Kasıtlı: yalnızca program değiştiğinde yeniden kurulur. Diğer değerler
+    // effect içinde okunduğunda güncel halleri zaten localStorage'dan alınır.
   }, [activeProgram]);
 
   // Main React-side timer clock
@@ -275,8 +403,10 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
       syncTime();
       timerIntervalRef.current = setInterval(syncTime, 1000);
     } else {
+      // Duraklatıldığında ayrıca setElapsedSeconds(accumulatedSeconds) çağrılırdı;
+      // gereksizdi. toggleTimer duraklatırken accumulatedSeconds'ı elapsedSeconds'a
+      // eşitliyor, kayıtlı seans geri yüklenirken de başlatıcı aynı değeri veriyor.
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      setElapsedSeconds(accumulatedSeconds);
     }
 
     return () => {
@@ -298,29 +428,12 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     };
   }, [isTimerRunning, timerStartTime, accumulatedSeconds]);
 
-  // Helper to construct dynamic progress string for notification
-  const getProgressString = (currentExercises: WorkoutExercise[]) => {
-    const total = currentExercises.length;
-    const completed = currentExercises.filter(ex => ex.sets.every(s => s.completed)).length;
-    const activeEx = currentExercises.find(ex => !ex.sets.every(s => s.completed)) || currentExercises[total - 1];
-    const activeName = activeEx ? activeEx.name : '';
-    return {
-      title: `${completed}/${total} Egzersiz • ${activeName}`,
-      progressText: `${completed}/${total} Egzersiz Tamamlandı`
-    };
-  };
 
-  // Sync React state updates to Background Notification
-  const syncWithBackgroundService = (
-    currentExercises = exercises,
-    resting = isResting,
-    secondsLeft = restSecondsLeft
-  ) => {
-    if (currentExercises.length === 0) return;
-    const { title } = getProgressString(currentExercises);
-    updateWorkoutService(title, resting, secondsLeft);
-  };
 
+  // Egzersiz listesi her değiştiğinde durumu diske ve arka plan servisine yaz.
+  // Kasıtlı olarak yalnızca `exercises` dinlenir: tetikleyici odur, diğer
+  // değerler yazılacak anlık görüntünün parçasıdır. Hepsini bağımlılığa eklemek
+  // her saniye (sayaç ilerledikçe) gereksiz yazma yapardı.
   useEffect(() => {
     if (exercises.length === 0) return;
     syncWithBackgroundService(exercises, isResting, restSecondsLeft);
@@ -344,11 +457,6 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     });
   };
 
-  const [showCelebration, setShowCelebration] = useState(false);
-  const [newPRs, setNewPRs] = useState<PersonalRecord[]>([]);
-  const [completedWorkoutData, setCompletedWorkoutData] = useState<CompletedWorkout | null>(null);
-  const [workoutNote, setWorkoutNote] = useState('');
-  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const getLastSetPerformed = (exerciseId: string, setIdx: number) => {
     const lastSession = [...history].reverse().find(w =>
@@ -456,8 +564,6 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     );
   };
   
-  // Mobile set slider picker state
-  const [activeSetEdit, setActiveSetEdit] = useState<{ exIdx: number; setIdx: number } | null>(null);
 
   useEffect(() => {
     if (activeSetEdit) {
@@ -470,45 +576,6 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     };
   }, [activeSetEdit]);
 
-  // Rest timer states
-  const [isResting, setIsResting] = useState<boolean>(() => {
-    const saved = getSavedWorkoutState();
-    if (saved && saved.activeProgram?.id === activeProgram.id) {
-      return saved.isResting || false;
-    }
-    return false;
-  });
-  const [restDuration, setRestDuration] = useState<number>(() => {
-    const saved = getSavedWorkoutState();
-    if (saved && saved.activeProgram?.id === activeProgram.id) {
-      return saved.restDuration || 60;
-    }
-    return 60;
-  });
-  const [restSecondsLeft, setRestSecondsLeft] = useState<number>(() => {
-    const saved = getSavedWorkoutState();
-    if (saved && saved.activeProgram?.id === activeProgram.id && saved.isResting) {
-      const elapsedRest = Math.floor((Date.now() - (saved.restStartTime || Date.now())) / 1000);
-      return Math.max(0, (saved.restSecondsLeft || 0) - elapsedRest);
-    }
-    return 0;
-  });
-  const [restStartTime, setRestStartTime] = useState<number | null>(() => {
-    const saved = getSavedWorkoutState();
-    if (saved && saved.activeProgram?.id === activeProgram.id) {
-      return saved.restStartTime || null;
-    }
-    return null;
-  });
-  const [currentRestExercise, setCurrentRestExercise] = useState<string>(() => {
-    const saved = getSavedWorkoutState();
-    if (saved && saved.activeProgram?.id === activeProgram.id) {
-      return saved.currentRestExercise || '';
-    }
-    return '';
-  });
-  
-  const restIntervalRef = useRef<any>(null);
 
   useEffect(() => {
     if (isResting && restStartTime) {
@@ -530,49 +597,11 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     return () => {
       if (restIntervalRef.current) clearInterval(restIntervalRef.current);
     };
+    // Kasıtlı: sayaç yalnızca dinlenme başlayıp bittiğinde kurulur/yıkılır.
+    // handleRestComplete'i bağımlılığa eklemek her render'da sayacı sıfırlardı.
   }, [isResting, restStartTime, restDuration]);
 
-  // Synthesize dynamic chime when rest finishes using Web Audio API
-  const playSynthesizedChime = () => {
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) return;
-      const ctx = new AudioContextClass();
-      
-      const playTone = (freq: number, start: number, dur: number) => {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, start);
-        gain.gain.setValueAtTime(0.12, start);
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start(start);
-        osc.stop(start + dur);
-      };
 
-      // Play a beautiful 3-tone ascending arpeggio (C5 -> E5 -> G5)
-      const now = ctx.currentTime;
-      playTone(523.25, now, 0.2);       // C5
-      playTone(659.25, now + 0.15, 0.25);  // E5
-      playTone(783.99, now + 0.3, 0.45);   // G5
-    } catch (e) {
-      console.warn("AudioContext failed to play sound due to user interaction restrictions:", e);
-    }
-  };
-
-  const handleRestComplete = () => {
-    setIsResting(false);
-    setRestStartTime(null);
-    playSynthesizedChime();
-    if (navigator.vibrate) {
-      navigator.vibrate([200, 100, 200]); // Short dynamic vibration
-    }
-    cancelRestNotification();
-    syncWithBackgroundService(exercises, false, 0);
-    saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, false, 0, restDuration, currentRestExercise, undefined, undefined, null);
-  };
 
   // Rest Controls
   const skipRest = () => {
@@ -585,13 +614,13 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
   };
 
   const changeRestDuration = (sec: number) => {
-    const now = Date.now();
+    const startedAt = now();
     setRestDuration(sec);
-    setRestStartTime(now);
+    setRestStartTime(startedAt);
     setRestSecondsLeft(sec);
     scheduleRestNotification(sec, currentRestExercise || "Sıradaki Egzersiz");
     syncWithBackgroundService(exercises, isResting, sec);
-    saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, isResting, sec, sec, currentRestExercise, undefined, undefined, now);
+    saveWorkoutState(exercises, isTimerRunning, elapsedSeconds, isResting, sec, sec, currentRestExercise, undefined, undefined, startedAt);
   };
 
   // Active set toggle
@@ -735,41 +764,12 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
       notes: workoutNote.trim() || undefined
     };
 
-    // V2 - Calculate if any Personal Records (PR) were broken in this session based on max weight
-    const brokenPRs: PersonalRecord[] = [];
-
-    exercises.forEach(ex => {
-      const completedSets = ex.sets.filter(s => s.completed);
-      if (completedSets.length === 0) return;
-
-      let bestWeight = 0;
-      let bestReps = 0;
-
-      completedSets.forEach(s => {
-        const weight = s.actualWeight ?? s.weight;
-        const reps = s.actualReps ?? s.reps;
-        
-        if (weight > bestWeight || (weight === bestWeight && reps > bestReps)) {
-          bestWeight = weight;
-          bestReps = reps;
-        }
-      });
-
-      const bestOneRepMax = Math.round((bestReps === 1 ? bestWeight : bestWeight * (1 + bestReps / 30)) * 10) / 10;
-
-      // Find existing personal record
-      const existingPR = personalRecords.find(pr => pr.exerciseId === ex.exerciseId);
-      if (!existingPR || bestWeight > existingPR.maxWeight || (bestWeight === existingPR.maxWeight && bestReps > existingPR.maxReps)) {
-        brokenPRs.push({
-          exerciseId: ex.exerciseId,
-          exerciseName: ex.name,
-          maxWeight: bestWeight,
-          maxReps: bestReps,
-          oneRepMax: bestOneRepMax,
-          date: new Date().toISOString().split('T')[0]
-        });
-      }
-    });
+    // V2 - Calculate if any Personal Records (PR) were broken in this session
+    const brokenPRs = calculatePersonalRecords(
+      exercises,
+      personalRecords,
+      new Date().toISOString().split('T')[0]
+    );
 
     if (brokenPRs.length > 0) {
       setCompletedWorkoutData(completed);
@@ -798,8 +798,12 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
     const secs = totalSeconds % 60;
     return `${hrs > 0 ? `${hrs}:` : ''}${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
-  handleFinishWorkoutRef.current = handleFinishWorkout;
-  skipRestRef.current = skipRest;
+  // Arka plan servisi dinleyicisi bayat closure yakalamasın diye en güncel
+  // fonksiyonlar her render'dan SONRA ref'e yazılır (render sırasında değil).
+  useEffect(() => {
+    handleFinishWorkoutRef.current = handleFinishWorkout;
+    skipRestRef.current = skipRest;
+  });
 
   return (
     <div className="active-workout-container anim-fade-in">
