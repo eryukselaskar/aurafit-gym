@@ -3,6 +3,7 @@ import {
   collection, 
   doc, 
   getDocs, 
+  getDoc,
   setDoc, 
   deleteDoc,
   arrayUnion,
@@ -11,23 +12,11 @@ import {
   runTransaction
 } from 'firebase/firestore';
 import type { Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord, PublicProgram } from '../types';
-import { INITIAL_EXERCISES, INITIAL_PROGRAMS } from './localStorage';
+import { INITIAL_PROGRAMS } from './localStorage';
 
 // Helper to strip undefined values so Firestore does not throw errors
 const toFirestoreData = <T>(obj: T): T => {
   return JSON.parse(JSON.stringify(obj));
-};
-
-export const syncExercises = async (userId: string): Promise<Exercise[]> => {
-  const colRef = collection(db, 'users', userId, 'exercises');
-  const snap = await getDocs(colRef);
-  
-  const customExercises = snap.docs.map(d => d.data() as Exercise);
-
-  // Merge with defaults, skipping any default whose ID was already stored in Firestore
-  const customIds = new Set(customExercises.map(e => e.id));
-  const defaultsToAdd = INITIAL_EXERCISES.filter(e => !customIds.has(e.id));
-  return [...customExercises, ...defaultsToAdd];
 };
 
 export const syncSaveExercise = async (userId: string, exercise: Exercise): Promise<void> => {
@@ -109,6 +98,21 @@ export const publishProgramToHub = async (
 ): Promise<void> => {
   // We use a unique public program ID based on original program ID + creator ID
   const publicProgId = `public-${program.id}-${creatorId}`;
+  const docRef = doc(db, 'public_programs', publicProgId);
+  
+  let existingUpvotes = 0;
+  let existingUpvotedBy: string[] = [];
+  
+  try {
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data() as PublicProgram;
+      existingUpvotes = data.upvotes || 0;
+      existingUpvotedBy = data.upvotedBy || [];
+    }
+  } catch (e) {
+    console.warn("Failed to check existing upvotes for re-publish, default to 0:", e);
+  }
   
   const publicProg: PublicProgram = {
     id: publicProgId,
@@ -119,12 +123,12 @@ export const publishProgramToHub = async (
     sessions: program.sessions || [],
     creatorId,
     creatorName,
-    upvotes: 0,
-    upvotedBy: [],
+    upvotes: existingUpvotes,
+    upvotedBy: existingUpvotedBy,
     createdAt: new Date().toISOString()
   };
 
-  await setDoc(doc(db, 'public_programs', publicProgId), toFirestoreData(publicProg));
+  await setDoc(docRef, toFirestoreData(publicProg));
 };
 
 export const fetchPublicPrograms = async (): Promise<PublicProgram[]> => {

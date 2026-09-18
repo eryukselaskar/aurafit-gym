@@ -27,6 +27,8 @@ export interface WorkoutExercise {
   notes?: string; // Egzersiz notu (Koçun Notu vb.)
   minReps?: number; // Minimum hedef tekrar
   maxReps?: number; // Maksimum hedef tekrar
+  weight?: number; // Egzersiz seviyesinde hedef ağırlık (opsiyonel)
+  rir?: number; // Egzersiz seviyesinde hedef RIR (opsiyonel)
 }
 
 export interface WorkoutSession {
@@ -42,6 +44,10 @@ export interface WorkoutProgram {
   exercises: WorkoutExercise[];
   sessions?: WorkoutSession[]; // Çoklu antrenman günleri desteği
   createdAt: string;
+  // Split programdan tek gün başlatıldığında doldurulur; aktif antrenman ekranı
+  // başlığı "program / gün" olarak iki satırda gösterebilsin diye.
+  parentName?: string;
+  sessionName?: string;
 }
 
 export interface CompletedWorkout {

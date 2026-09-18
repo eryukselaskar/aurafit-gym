@@ -25,3 +25,13 @@ dist-ssr
 
 # Local test/debug artifacts
 .playwright-mcp/
+
+# Test/verification artifacts
+verify-*.png
+playwright-report/
+test-results/
+
+# Build outputs (Android / Electron)
+*.apk
+*.aab
+dist-electron/

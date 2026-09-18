@@ -538,4 +538,53 @@ html, body {
   box-shadow: 0 0 10px rgba(139, 92, 246, 0.15);
 }
 
+/* Scrollable tabs container for mobile and desktop day-switching */
+.session-tabs-container {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 8px;
+  align-items: center;
+  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Hide scrollbar for Firefox */
+}
 
+.session-tabs-container::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for Chrome/Safari/Opera */
+}
+
+
+
+
+/* Program Builder onay modalı (düzenleyici ve liste ekranlarında ortak) */
+.pb-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  z-index: 2100;
+}
+
+.pb-modal-box {
+  width: 100%;
+  max-width: 400px;
+  max-height: 88dvh;
+  overflow-y: auto;
+  margin: auto 0;
+  background: var(--bg-card-solid);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--radius-lg);
+  padding: 26px 22px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}

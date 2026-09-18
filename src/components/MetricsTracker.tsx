@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2, Calendar, TrendingUp, ChevronUp, Activity, Flame, Calculator } from 'lucide-react';
 import type { WeightLog } from '../types';
 
@@ -9,6 +9,37 @@ interface MetricsTrackerProps {
 }
 
 type MetricType = 'weight' | 'bodyFat' | 'biceps' | 'waist' | 'chest' | 'thigh';
+
+/** En son tarihli kilo kaydını metin olarak döner, kayıt yoksa null. */
+const mostRecentWeight = (logs: WeightLog[]): string | null => {
+  if (logs.length === 0) return null;
+  const latest = [...logs].sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  )[0];
+  return latest.weight.toString();
+};
+
+/**
+ * YMCA yöntemiyle yağ oranı tahmini. Girdiler eksikse veya sonuç makul
+ * aralığın (%2-60) dışına düşerse boş metin döner.
+ */
+const estimateBodyFat = (
+  weight: string,
+  waist: string,
+  gender: 'male' | 'female'
+): string => {
+  const w = parseFloat(weight);
+  const bel = parseFloat(waist);
+  if (!(w > 0) || !(bel > 0)) return '';
+
+  const waistInches = bel / 2.54;
+  const weightLbs = w * 2.20462;
+  const baseline = gender === 'male' ? -98.42 : -76.76;
+  const fatWeight = baseline + 4.15 * waistInches - 0.082 * weightLbs;
+  const fatPercent = (fatWeight / weightLbs) * 100;
+
+  return fatPercent > 2 && fatPercent < 60 ? fatPercent.toFixed(1) : '';
+};
 type CalcTabType = 'bmi' | 'tdee';
 
 export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
@@ -21,7 +52,6 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
   // Form states
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [weight, setWeight] = useState('');
-  const [bodyFat, setBodyFat] = useState('');
   const [biceps, setBiceps] = useState('');
   const [waist, setWaist] = useState('');
   const [chest, setChest] = useState('');
@@ -36,42 +66,20 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
   const [userHeight, setUserHeight] = useState('175');
   const [userAge, setUserAge] = useState('25');
   const [activityLevel, setActivityLevel] = useState('1.55'); // moderately active
-  const [calcWeight, setCalcWeight] = useState('75');
+  const latestLoggedWeight = mostRecentWeight(weightLogs);
+  const [calcWeight, setCalcWeight] = useState(latestLoggedWeight ?? '75');
+  const [syncedWeight, setSyncedWeight] = useState(latestLoggedWeight);
 
-  // Pre-fill calculator weight from the most recent log (sort by date descending)
-  useEffect(() => {
-    if (weightLogs.length > 0) {
-      const sorted = [...weightLogs].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-      );
-      setCalcWeight(sorted[0].weight.toString());
-    }
-  }, [weightLogs]);
+  // Yeni bir kilo kaydı eklenince hesaplayıcı alanını tazele; kullanıcının
+  // aradaki düzenlemesi korunur.
+  if (latestLoggedWeight !== syncedWeight) {
+    setSyncedWeight(latestLoggedWeight);
+    if (latestLoggedWeight) setCalcWeight(latestLoggedWeight);
+  }
 
-  // Auto-calculate body fat when weight, waist, or gender changes
-  useEffect(() => {
-    const w = parseFloat(weight);
-    const bel = parseFloat(waist);
-    if (w > 0 && bel > 0) {
-      const waistInches = bel / 2.54;
-      const weightLbs = w * 2.20462;
-      let fatPercent = 0;
-      if (userGender === 'male') {
-        const fatWeight = -98.42 + 4.15 * waistInches - 0.082 * weightLbs;
-        fatPercent = (fatWeight / weightLbs) * 100;
-      } else {
-        const fatWeight = -76.76 + 4.15 * waistInches - 0.082 * weightLbs;
-        fatPercent = (fatWeight / weightLbs) * 100;
-      }
-      if (fatPercent > 2 && fatPercent < 60) {
-        setBodyFat(fatPercent.toFixed(1));
-      } else {
-        setBodyFat('');
-      }
-    } else {
-      setBodyFat('');
-    }
-  }, [weight, waist, userGender]);
+  // Yağ oranı yalnızca kilo/bel/cinsiyetten hesaplanır ve kullanıcı tarafından
+  // düzenlenmez; bu yüzden state değil, render sırasında türetilen bir değer.
+  const bodyFat = estimateBodyFat(weight, waist, userGender);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +100,6 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
 
     // Reset inputs
     setWeight('');
-    setBodyFat('');
     setBiceps('');
     setWaist('');
     setChest('');

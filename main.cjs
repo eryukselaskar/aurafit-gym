@@ -44,14 +44,6 @@ function startLocalServer(callback) {
       return;
     }
 
-    // Intercept Open External Browser
-    if (req.url === '/api/open-external-browser') {
-      shell.openExternal('https://aurafit-app-2026.web.app');
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'opened' }));
-      return;
-    }
-
     // Intercept Auth Callback from system browser
     if (req.url && req.url.startsWith('/api/auth-callback') && req.method === 'POST') {
       let body = '';

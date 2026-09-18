@@ -1,6 +1,6 @@
-import type { Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord } from '../types';
+import type { Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord, PublicProgram } from '../types';
 
-export const INITIAL_EXERCISES: Exercise[] = [
+const CURATED_EXERCISES: Exercise[] = [
   // Göğüs (Chest)
   { id: 'ex-1', name: 'Incline Dumbbell Press', category: 'Göğüs', description: 'Üst göğüs liflerini hedefleyen dambıl pres egzersizi.' },
   { id: 'ex-2', name: 'Barbell Bench Press', category: 'Göğüs', description: 'Temel bileşik göğüs egzersizi. Tüm göğsü uyarır.' },
@@ -287,8 +287,41 @@ export const INITIAL_EXERCISES: Exercise[] = [
   { id: 'ex-237', name: 'Hack Squat (45°)', category: 'Bacak', description: '45 derece hack squat makinesinde yapılan çömelme hareketi. Kuadriseps ve kalçayı dengeli çalıştırır.' },
   { id: 'ex-238', name: 'Smith Machine Hip Thrust', category: 'Bacak', description: 'Smith makinesi barıyla yapılan kalça itişi. Ağırlık kontrolü ve güvenlik açısından avantajlıdır.' },
   { id: 'ex-239', name: 'Dumbbell Hip Thrust', category: 'Bacak', description: 'Dambıl ile yapılan kalça itişi. Makine yokken alternatif olarak kullanılır.' },
-  { id: 'ex-240', name: 'B-Stance Hip Thrust', category: 'Bacak', description: 'Bir ayak önde, bir ayak hafif geride tutularak yapılan kalça itişi. Unilateral glute aktivasyonu sağlar.' }
+  { id: 'ex-240', name: 'B-Stance Hip Thrust', category: 'Bacak', description: 'Bir ayak önde, bir ayak hafif geride tutularak yapılan kalça itişi. Unilateral glute aktivasyonu sağlar.' },
 ];
+
+// Dahili katalog: elle yazılmış liste + toplu veri seti, isme göre tekilleştirilmiş.
+// Aynı isim iki listede de varsa elle yazılan (daha iyi açıklamalı) kayıt kazanır.
+export const dedupeByName = (lists: Exercise[][]): Exercise[] => {
+  const byName = new Map<string, Exercise>();
+  for (const list of lists) {
+    for (const ex of list) {
+      const key = ex.name.trim().toLowerCase();
+      if (!byName.has(key)) byName.set(key, ex);
+    }
+  }
+  return Array.from(byName.values());
+};
+
+// Toplu veri seti (~870 KB) ilk yüklemeyi ağırlaştırmasın diye ayrı bir parçada
+// tutulur ve açılıştan sonra yüklenir. O gelene kadar katalog elle yazılmış
+// listeden ibarettir; hazır olunca genişler.
+let catalog: Exercise[] = CURATED_EXERCISES;
+let catalogIds = new Set(catalog.map(ex => ex.id));
+let catalogPromise: Promise<Exercise[]> | null = null;
+
+export const getCatalog = (): Exercise[] => catalog;
+
+export const loadFullCatalog = (): Promise<Exercise[]> => {
+  if (!catalogPromise) {
+    catalogPromise = import('./datasetExercises').then(({ DATASET_EXERCISES }) => {
+      catalog = dedupeByName([CURATED_EXERCISES, DATASET_EXERCISES]);
+      catalogIds = new Set(catalog.map(ex => ex.id));
+      return catalog;
+    });
+  }
+  return catalogPromise;
+};
 
 export const INITIAL_PROGRAMS: WorkoutProgram[] = [
   {
@@ -730,35 +763,35 @@ export const INITIAL_PROGRAMS: WorkoutProgram[] = [
   }
 ];
 
+// Dahili katalog koda gömülü olduğu için localStorage'da yalnızca kullanıcının
+// kendi eklediği egzersizler tutulur. Eski sürümler tüm katalogu (~1400 kayıt,
+// ~1 MB) yazıyordu; aşağıdaki filtre o kayıtları ilk okumada temizler.
+const toCustomOnly = (exercises: Exercise[]): Exercise[] =>
+  exercises.filter(ex => ex.isCustom && !catalogIds.has(ex.id));
+
 export const getExercises = (): Exercise[] => {
   const data = localStorage.getItem('aurafit_exercises');
-  if (!data) {
-    localStorage.setItem('aurafit_exercises', JSON.stringify(INITIAL_EXERCISES));
-    return INITIAL_EXERCISES;
-  }
+  if (!data) return catalog;
 
   let existing: Exercise[];
   try {
     existing = JSON.parse(data);
   } catch {
     localStorage.removeItem('aurafit_exercises');
-    return INITIAL_EXERCISES;
+    return catalog;
   }
 
-  const existingIds = new Set(existing.map(ex => ex.id));
-  const missing = INITIAL_EXERCISES.filter(ex => !existingIds.has(ex.id));
-
-  if (missing.length > 0) {
-    const updated = [...existing, ...missing];
-    localStorage.setItem('aurafit_exercises', JSON.stringify(updated));
-    return updated;
+  const custom = toCustomOnly(existing);
+  if (custom.length !== existing.length) {
+    // Eski format: katalog da kaydedilmiş. Sadeleştirilmiş haliyle geri yaz.
+    localStorage.setItem('aurafit_exercises', JSON.stringify(custom));
   }
 
-  return existing;
+  return [...custom, ...catalog];
 };
 
 export const saveExercises = (exercises: Exercise[]): void => {
-  localStorage.setItem('aurafit_exercises', JSON.stringify(exercises));
+  localStorage.setItem('aurafit_exercises', JSON.stringify(toCustomOnly(exercises)));
 };
 
 export const getPrograms = (): WorkoutProgram[] => {
@@ -866,7 +899,7 @@ export const savePersonalRecords = (prs: PersonalRecord[]): void => {
   localStorage.setItem('aurafit_personal_records', JSON.stringify(prs));
 };
 
-export const getPublicPrograms = (): any[] => {
+export const getPublicPrograms = (): PublicProgram[] => {
   const data = localStorage.getItem('aurafit_public_programs');
   if (!data) return [];
   try {
@@ -877,6 +910,6 @@ export const getPublicPrograms = (): any[] => {
   }
 };
 
-export const savePublicPrograms = (programs: any[]): void => {
+export const savePublicPrograms = (programs: PublicProgram[]): void => {
   localStorage.setItem('aurafit_public_programs', JSON.stringify(programs));
 };
