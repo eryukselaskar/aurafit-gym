@@ -30,3 +30,8 @@ dist-ssr
 verify-*.png
 playwright-report/
 test-results/
+
+# Build outputs (Android / Electron)
+*.apk
+*.aab
+dist-electron/
