@@ -12,23 +12,11 @@ import {
   runTransaction
 } from 'firebase/firestore';
 import type { Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord, PublicProgram } from '../types';
-import { INITIAL_EXERCISES, INITIAL_PROGRAMS } from './localStorage';
+import { INITIAL_PROGRAMS } from './localStorage';
 
 // Helper to strip undefined values so Firestore does not throw errors
 const toFirestoreData = <T>(obj: T): T => {
   return JSON.parse(JSON.stringify(obj));
-};
-
-export const syncExercises = async (userId: string): Promise<Exercise[]> => {
-  const colRef = collection(db, 'users', userId, 'exercises');
-  const snap = await getDocs(colRef);
-  
-  const customExercises = snap.docs.map(d => d.data() as Exercise);
-
-  // Merge with defaults, skipping any default whose ID was already stored in Firestore
-  const customIds = new Set(customExercises.map(e => e.id));
-  const defaultsToAdd = INITIAL_EXERCISES.filter(e => !customIds.has(e.id));
-  return [...customExercises, ...defaultsToAdd];
 };
 
 export const syncSaveExercise = async (userId: string, exercise: Exercise): Promise<void> => {

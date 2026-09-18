@@ -38,7 +38,8 @@ import {
   saveWeightLogs,
   getPersonalRecords,
   savePersonalRecords,
-  INITIAL_EXERCISES,
+  getCatalog,
+  loadFullCatalog,
   INITIAL_PROGRAMS,
   getPublicPrograms,
   savePublicPrograms
@@ -47,13 +48,33 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import type { ActiveTab, Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord, PublicProgram, WorkoutSession } from './types';
 import { Sparkles, X, Play } from 'lucide-react';
 
+// Electron'daki yerel sunucu, sistem tarayıcısından gelen kimlik bilgisini bu
+// global üzerinden uygulamaya iletir (bkz. main.cjs -> /api/auth-callback).
+interface ExternalAuthCredentials {
+  uid: string;
+  email: string;
+  displayName: string | null;
+  photoURL: string | null;
+  idToken: string;
+}
+
+declare global {
+  interface Window {
+    handleExternalAuth?: (credentials: ExternalAuthCredentials) => Promise<void>;
+  }
+}
+
+// Bilinmeyen bir hatadan kullanıcıya gösterilebilir bir mesaj üretir.
+const errorMessage = (err: unknown): string =>
+  err instanceof Error ? err.message : String(err);
+
 
 function App() {
   const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
     try {
       const saved = localStorage.getItem('aurafit_workout_active_state');
       return saved ? 'active' : 'dashboard';
-    } catch (e) {
+    } catch {
       return 'dashboard';
     }
   });
@@ -72,7 +93,7 @@ function App() {
   const [continueAsGuest, setContinueAsGuest] = useState<boolean>(() => {
     try {
       return localStorage.getItem('aurafit_continue_as_guest') === 'true';
-    } catch (e) {
+    } catch {
       return false;
     }
   });
@@ -82,7 +103,7 @@ function App() {
   const [isWorkoutActive, setIsWorkoutActive] = useState<boolean>(() => {
     try {
       return localStorage.getItem('aurafit_workout_active_state') !== null;
-    } catch (e) {
+    } catch {
       return false;
     }
   });
@@ -93,7 +114,7 @@ function App() {
         const parsed = JSON.parse(saved);
         return parsed.activeProgram || null;
       }
-    } catch (e) {}
+    } catch { /* localStorage erişilemiyor; varsayılanla devam */ }
     return null;
   });
   const [sessionSelectProgram, setSessionSelectProgram] = useState<WorkoutProgram | null>(null);
@@ -112,6 +133,20 @@ function App() {
     setPublicPrograms(getPublicPrograms());
     setIsLoading(false);
   };
+
+  // Tam egzersiz katalogunu (ayrı parça, ~870 KB) ilk boyamadan sonra yükle.
+  useEffect(() => {
+    let cancelled = false;
+    loadFullCatalog()
+      .then((fullCatalog) => {
+        if (cancelled) return;
+        setExercises(prev => [...prev.filter(ex => ex.isCustom), ...fullCatalog]);
+      })
+      .catch((err) => {
+        console.error("Egzersiz katalogu yüklenemedi:", err);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   // Bind Firebase Auth session
   useEffect(() => {
@@ -139,6 +174,7 @@ function App() {
           if (result) {
             console.log("Logged in via Google redirect:", result.user);
             setCurrentUser(result.user);
+            setIsLoading(true);
             setUserId(result.user.uid);
           }
         })
@@ -151,12 +187,14 @@ function App() {
       clearTimeout(fallbackTimeout);
       if (user) {
         setCurrentUser(user);
+        setIsLoading(true);
         setUserId(user.uid);
       } else {
         setCurrentUser(null);
         try {
           const credentials = await signInAnonymously(auth);
           setCurrentUser(credentials.user);
+          setIsLoading(true);
           setUserId(credentials.user.uid);
         } catch (err) {
           console.error("Firebase Anonymous Auth failed:", err);
@@ -169,17 +207,15 @@ function App() {
       clearTimeout(fallbackTimeout);
       unsubscribe();
     };
+    // Bu effect yalnızca mount'ta çalışmalı: auth aboneliğini yeniden kurmak
+    // oturumu koparır. Zaman aşımı closure'ının ilk render değerlerini (isLoading
+    // true, userId null) görmesi kasıtlıdır; auth yanıt verirse timer temizlenir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Register Electron external browser auth callback
   useEffect(() => {
-    (window as any).handleExternalAuth = async (credentials: {
-      uid: string;
-      email: string;
-      displayName: string | null;
-      photoURL: string | null;
-      idToken: string;
-    }) => {
+    window.handleExternalAuth = async (credentials: ExternalAuthCredentials) => {
       try {
         setIsLoading(true);
         setIsWaitingForBrowser(false);
@@ -236,9 +272,9 @@ function App() {
             await syncSavePersonalRecord(newUid, pr);
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("External Google Sign-In failed:", err);
-        alert("Tarayıcı ile giriş yapılamadı: " + (err.message || err));
+        alert("Tarayıcı ile giriş yapılamadı: " + errorMessage(err));
       } finally {
         setIsWaitingForBrowser(false);
         setIsLoading(false);
@@ -246,7 +282,7 @@ function App() {
     };
 
     return () => {
-      delete (window as any).handleExternalAuth;
+      delete window.handleExternalAuth;
     };
   }, [exercises, programs, history, weightLogs, personalRecords]);
 
@@ -266,8 +302,10 @@ function App() {
       // Check if we are running in Electron
       const isElectron = /electron/i.test(navigator.userAgent);
       if (isElectron) {
-        // Trigger local Electron server to open hosted web app in system browser
-        fetch('/api/open-external-browser');
+        // Trigger local Electron server to open the desktop login page in the system
+        // browser. It carries the local port + state so it can POST the credential
+        // back to /api/auth-callback, which invokes window.handleExternalAuth.
+        fetch('/api/open-external-login');
         setIsWaitingForBrowser(true);
         setIsLoading(false);
         return;
@@ -335,12 +373,14 @@ function App() {
           await syncSavePersonalRecord(newUid, pr);
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Google Sign-In failed:", err);
       // Suppress alert on user cancellation of native chooser
-      const isCancellation = err.message?.includes('canceled') || err.code === '12501' || err.message?.includes('12501');
+      const message = errorMessage(err);
+      const code = (err as { code?: string })?.code;
+      const isCancellation = message.includes('canceled') || code === '12501' || message.includes('12501');
       if (!isCancellation) {
-        alert("Google ile giriş yapılamadı: " + (err.message || err));
+        alert("Google ile giriş yapılamadı: " + message);
       }
     } finally {
       setIsLoading(false);
@@ -373,7 +413,7 @@ function App() {
       localStorage.removeItem('aurafit_workout_active_state');
       
       // Reset React state
-      setExercises(INITIAL_EXERCISES);
+      setExercises(getCatalog());
       setPrograms(INITIAL_PROGRAMS);
       setHistory([]);
       setWeightLogs([]);
@@ -382,7 +422,7 @@ function App() {
       // Reset guest continuation states
       try {
         localStorage.removeItem('aurafit_continue_as_guest');
-      } catch (e) {}
+      } catch { /* localStorage erişilemiyor; varsayılanla devam */ }
       setContinueAsGuest(false);
     } catch (err) {
       console.error("Sign-Out failed:", err);
@@ -395,7 +435,8 @@ function App() {
   useEffect(() => {
     if (!userId) return;
 
-    setIsLoading(true);
+    // Not: yükleme göstergesi userId'nin belirlendiği yerde açılır; burada
+    // senkron setState çağırmak cascading render'a yol açıyordu.
 
     // Track initial synchronization status for local-first merge workflow
     let isExercisesSynced = false;
@@ -418,7 +459,7 @@ function App() {
         cloudCustom.forEach(ex => mergedMap.set(ex.id, ex));
 
         const mergedCustom = Array.from(mergedMap.values());
-        const combined = [...mergedCustom, ...INITIAL_EXERCISES];
+        const combined = [...mergedCustom, ...getCatalog()];
 
         // Sync local-only custom exercises to cloud
         const cloudIds = new Set(cloudCustom.map(ex => ex.id));
@@ -436,7 +477,7 @@ function App() {
         saveExercises(combined);
       } else {
         // Subsequent snapshots: trust cloud as source of truth
-        const combined = [...cloudCustom, ...INITIAL_EXERCISES];
+        const combined = [...cloudCustom, ...getCatalog()];
         setExercises(combined);
         saveExercises(combined);
       }
@@ -731,7 +772,7 @@ function App() {
   const handleFinishWorkout = async (completedWorkout: CompletedWorkout, newPRs: PersonalRecord[]) => {
     try {
       localStorage.removeItem('aurafit_workout_active_state');
-    } catch (e) {}
+    } catch { /* localStorage erişilemiyor; varsayılanla devam */ }
     const updatedHistory = [...history, completedWorkout];
     
     setHistory(updatedHistory);
@@ -866,7 +907,7 @@ function App() {
   const handleCancelWorkout = () => {
     try {
       localStorage.removeItem('aurafit_workout_active_state');
-    } catch (e) {}
+    } catch { /* localStorage erişilemiyor; varsayılanla devam */ }
     setIsWorkoutActive(false);
     setActiveProgram(null);
     setActiveTab('programs');
