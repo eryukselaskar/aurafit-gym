@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit2, ChevronLeft, Save, Sparkles, BookOpen, AlertCircle, PlusCircle, X, Play, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Edit2, ChevronLeft, Save, Sparkles, BookOpen, AlertCircle, PlusCircle, X, Play, GripVertical, Check, ChevronDown, Lock } from 'lucide-react';
 import type { WorkoutProgram, Exercise, WorkoutExercise, WorkoutSession } from '../types';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
@@ -30,61 +30,104 @@ const SortableExerciseCard: React.FC<SortableExCardProps> = ({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ex.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
 
+  // Kart varsayılan olarak kapalı: bir günde 6 hareket varken hepsinin tüm
+  // alanlarını açık göstermek ekranı kullanılamaz hale getiriyordu.
+  const [expanded, setExpanded] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(
+    ex.weight !== undefined || ex.rir !== undefined || Boolean(ex.notes)
+  );
+
+  const setCount = ex.sets.length;
+  const repTarget = formatRepTarget(ex, ex.sets[0] ?? { reps: 0 });
+  const summary = `${setCount} set · ${repTarget} tekrar · ${ex.restTime} sn`;
+  const hasLockedColumn =
+    (ex.minReps !== undefined && ex.maxReps !== undefined) ||
+    ex.weight !== undefined ||
+    ex.rir !== undefined;
+
   return (
-    <div ref={setNodeRef} style={style} className={`builder-exercise-card glass-panel ${isDragging ? 'dragging' : ''}`}>
+    <div ref={setNodeRef} style={style} className={`builder-exercise-card glass-panel ${isDragging ? 'dragging' : ''} ${expanded ? 'expanded' : ''}`}>
       <div className="builder-card-top">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div className="builder-card-title-row">
           <div
             className="drag-handle"
-            style={{ cursor: 'grab', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', touchAction: 'none' }}
-            title="Sürükle ve Bırak"
+            aria-label="Sürükleyerek sırala"
             {...attributes}
             {...listeners}
           >
             <GripVertical size={18} />
           </div>
-          <div>
-            <h4 className="builder-ex-name" style={{ margin: 0 }}>{ex.name}</h4>
-            <span className="badge badge-cyan" style={{ marginTop: '2px', display: 'inline-block' }}>{ex.category}</span>
-          </div>
+          <button
+            type="button"
+            className="builder-ex-toggle"
+            onClick={() => setExpanded(v => !v)}
+            aria-expanded={expanded}
+          >
+            <span className="builder-ex-toggle-text">
+              <span className="builder-ex-name">{ex.name}</span>
+              <span className="builder-ex-summary">{summary}</span>
+            </span>
+            <ChevronDown size={18} className="builder-ex-chevron" aria-hidden="true" />
+          </button>
         </div>
-        <button onClick={onRemove} className="btn-remove-ex">
+        <button onClick={onRemove} className="btn-remove-ex" aria-label={`${ex.name} hareketini sil`}>
           <Trash2 size={16} />
         </button>
       </div>
 
-      <div className="builder-card-settings" style={{ display: 'flex', gap: '15px', alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
-        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
+      {expanded && (
+      <>
+      <div className="builder-card-settings">
+        <div className="form-group inline-group">
           <label className="form-label">Dinlenme (sn)</label>
           <input type="number" min="10" max="300" step="10" value={ex.restTime}
             onChange={(e) => onRestChange(parseInt(e.target.value) || 60)} className="form-input mini-input" />
         </div>
-        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
+        <div className="form-group inline-group">
           <label className="form-label">Min Tekrar</label>
-          <input type="number" min="1" max="100" placeholder="Min" value={ex.minReps || ''}
-            onChange={(e) => onMinRepsChange(parseInt(e.target.value) || undefined)} className="form-input mini-input" style={{ width: '65px' }} />
+          <input type="number" min="1" max="100" placeholder="—" value={ex.minReps || ''}
+            onChange={(e) => onMinRepsChange(parseInt(e.target.value) || undefined)} className="form-input mini-input" />
         </div>
-        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
+        <div className="form-group inline-group">
           <label className="form-label">Max Tekrar</label>
-          <input type="number" min="1" max="100" placeholder="Max" value={ex.maxReps || ''}
-            onChange={(e) => onMaxRepsChange(parseInt(e.target.value) || undefined)} className="form-input mini-input" style={{ width: '65px' }} />
-        </div>
-        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
-          <label className="form-label">Hedef Kilo (kg)</label>
-          <input type="number" min="0" max="500" step="0.5" placeholder="Kilo" value={ex.weight !== undefined ? ex.weight : ''}
-            onChange={(e) => onWeightChange(e.target.value !== '' ? parseFloat(e.target.value) : undefined)} className="form-input mini-input" style={{ width: '70px' }} />
-        </div>
-        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
-          <label className="form-label">Hedef RIR</label>
-          <input type="number" min="0" max="10" placeholder="RIR" value={ex.rir !== undefined ? ex.rir : ''}
-            onChange={(e) => onRirChange(e.target.value !== '' ? parseInt(e.target.value) : undefined)} className="form-input mini-input" style={{ width: '65px' }} />
-        </div>
-        <div className="form-group inline-group" style={{ flexGrow: 1, display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <label className="form-label" style={{ whiteSpace: 'nowrap' }}>Koçun Notu</label>
-          <input type="text" placeholder="Örn: RIR 1 - duraksamalı tempo" value={ex.notes || ''}
-            onChange={(e) => onNotesChange(e.target.value)} className="form-input" style={{ flexGrow: 1, minWidth: '150px' }} />
+          <input type="number" min="1" max="100" placeholder="—" value={ex.maxReps || ''}
+            onChange={(e) => onMaxRepsChange(parseInt(e.target.value) || undefined)} className="form-input mini-input" />
         </div>
       </div>
+
+      <button
+        type="button"
+        className="builder-advanced-toggle"
+        onClick={() => setShowAdvanced(v => !v)}
+        aria-expanded={showAdvanced}
+      >
+        <ChevronDown size={14} className={showAdvanced ? 'rotated' : ''} aria-hidden="true" />
+        Gelişmiş
+      </button>
+
+      {showAdvanced && (
+        <div className="builder-card-settings advanced">
+          <p className="builder-advanced-hint">
+            Buradaki değerler <strong>tüm setlere</strong> uygulanır ve set tablosundaki
+            ilgili sütunu kilitler. Set başına farklı değer girmek için boş bırakın.
+          </p>
+          <div className="form-group inline-group">
+            <label className="form-label">Hedef Kilo (kg)</label>
+            <input type="number" min="0" max="500" step="0.5" placeholder="—" value={ex.weight !== undefined ? ex.weight : ''}
+              onChange={(e) => onWeightChange(e.target.value !== '' ? parseFloat(e.target.value) : undefined)} className="form-input mini-input" />
+          </div>
+          <div className="form-group inline-group">
+            <label className="form-label">Hedef RIR</label>
+            <input type="number" min="0" max="10" placeholder="—" value={ex.rir !== undefined ? ex.rir : ''}
+              onChange={(e) => onRirChange(e.target.value !== '' ? parseInt(e.target.value) : undefined)} className="form-input mini-input" />
+          </div>
+          <div className="form-group inline-group note-group">
+            <label className="form-label">Koçun Notu</label>
+            <input type="text" placeholder="Örn: duraksamalı tempo" value={ex.notes || ''}
+              onChange={(e) => onNotesChange(e.target.value)} className="form-input" />
+          </div>
+        </div>
+      )}
 
       <div className="builder-sets-list">
         <div className="sets-header-labels">
@@ -94,7 +137,8 @@ const SortableExerciseCard: React.FC<SortableExCardProps> = ({
           <div key={set.id} className="builder-set-row">
             <span className="set-number-label">{setIdx + 1}</span>
             {ex.minReps !== undefined && ex.maxReps !== undefined ? (
-              <span className="set-readonly-badge" title="Egzersiz seviyesinde Min-Max tekrar ayarlandığı için bu değer sabitlenmiştir.">
+              <span className="set-readonly-badge">
+                <Lock size={11} aria-hidden="true" />
                 {formatRepTarget(ex, set)}
               </span>
             ) : (
@@ -102,7 +146,8 @@ const SortableExerciseCard: React.FC<SortableExCardProps> = ({
                 onChange={(e) => onSetChange(setIdx, 'reps', parseInt(e.target.value) || 0)} className="form-input mini-input" />
             )}
             {ex.weight !== undefined ? (
-              <span className="set-readonly-badge" title="Egzersiz seviyesinde hedef ağırlık ayarlandığı için bu değer sabitlenmiştir.">
+              <span className="set-readonly-badge">
+                <Lock size={11} aria-hidden="true" />
                 {ex.weight} kg
               </span>
             ) : (
@@ -110,22 +155,37 @@ const SortableExerciseCard: React.FC<SortableExCardProps> = ({
                 onChange={(e) => onSetChange(setIdx, 'weight', parseFloat(e.target.value) || 0)} className="form-input mini-input" />
             )}
             {ex.rir !== undefined ? (
-              <span className="set-readonly-badge" title="Egzersiz seviyesinde hedef RIR ayarlandığı için bu değer sabitlenmiştir.">
+              <span className="set-readonly-badge">
+                <Lock size={11} aria-hidden="true" />
                 RIR {ex.rir}
               </span>
             ) : (
               <input type="number" min="0" max="10" placeholder="RIR" value={set.rir !== undefined ? set.rir : 2}
                 onChange={(e) => onSetChange(setIdx, 'rir', parseInt(e.target.value) || 0)} className="form-input mini-input" />
             )}
-            <button onClick={() => onRemoveSet(setIdx)} disabled={ex.sets.length <= 1} className="btn-delete-set">
+            <button
+              onClick={() => onRemoveSet(setIdx)}
+              disabled={ex.sets.length <= 1}
+              className="btn-delete-set"
+              aria-label={`${setIdx + 1}. seti sil`}
+            >
               <X size={14} />
             </button>
           </div>
         ))}
       </div>
+      {hasLockedColumn && (
+        <p className="builder-lock-hint">
+          <Lock size={11} aria-hidden="true" />
+          Kilitli sütunlar "Gelişmiş" bölümünden tüm setler için ayarlanmıştır.
+        </p>
+      )}
+
       <button onClick={onAddSet} className="btn-add-set-row">
         <PlusCircle size={14} /> Set Ekle
       </button>
+      </>
+      )}
     </div>
   );
 };
@@ -161,6 +221,19 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
   const [programExercises, setProgramExercises] = useState<WorkoutExercise[]>([]);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Seçici bu oturumda hangi hareketleri ekledi: listede ✓ göstermek için.
+  const [justAddedIds, setJustAddedIds] = useState<string[]>([]);
+
+  const openExerciseSelector = () => {
+    setJustAddedIds([]);
+    setShowExerciseSelector(true);
+  };
+
+  const closeExerciseSelector = () => {
+    setShowExerciseSelector(false);
+    setSearchTerm('');
+    setJustAddedIds([]);
+  };
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [formError, setFormError] = useState('');
 
@@ -296,8 +369,9 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
     };
 
     updateExercises(list => [...list, newWorkoutExercise]);
-    setShowExerciseSelector(false);
-    setSearchTerm('');
+    // Seçici açık kalır ve arama korunur: bir günü kurarken arka arkaya birkaç
+    // hareket eklemek normaldir, her eklemede modalı kapatmak o akışı kırıyordu.
+    setJustAddedIds(prev => [...prev, exercise.id]);
   };
 
   // Split ve tek-seans programlar aynı egzersiz listesi mantığını paylaşır; tek fark
@@ -473,7 +547,13 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             </h1>
             <p className="builder-subtitle">Kişisel hedeflerinize uygun egzersiz, set ve süreleri belirleyin.</p>
           </div>
-          <button onClick={handleSave} className="btn btn-primary">
+          {/* Ad girilmeden kaydetmek zaten hata veriyordu; o hâldeyken butonu
+              ikincil göstermek ekrandaki tek birincil eylemi "Egzersiz Ekle"
+              bırakıyor ve boş formda yanlış yönlendirme yapmıyor. */}
+          <button
+            onClick={handleSave}
+            className={`btn ${programName.trim() ? 'btn-primary' : 'btn-secondary'}`}
+          >
             <Save size={18} /> Kaydet
           </button>
         </header>
@@ -536,7 +616,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
               <label className="form-label">Program Adı *</label>
               <input
                 type="text"
-                placeholder="Örn: Push Günü (İtiş), Hipertrofi Rutini"
+                placeholder="Örn: Push Günü"
                 value={programName}
                 onChange={(e) => setProgramName(e.target.value)}
                 className="form-input"
@@ -546,7 +626,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             <div className="form-group">
               <label className="form-label">Açıklama</label>
               <textarea
-                placeholder="Bu programın odaklandığı bölgeleri veya özel notları yazın..."
+                placeholder="Odak bölgeler veya notlar (isteğe bağlı)"
                 value={programDesc}
                 onChange={(e) => setProgramDesc(e.target.value)}
                 className="form-textarea"
@@ -617,7 +697,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                   : 'Egzersizler'
                 } ({activeExList.length})
               </h3>
-              <button onClick={() => setShowExerciseSelector(true)} className="btn btn-outline btn-add-ex">
+              <button onClick={() => openExerciseSelector()} className="btn btn-outline btn-add-ex">
                 <Plus size={16} /> Egzersiz Ekle
               </button>
             </div>
@@ -627,7 +707,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                 <div className="empty-builder-state glass-panel">
                   <BookOpen size={36} />
                   <p>Bu güne henüz hareket eklemediniz.</p>
-                  <button onClick={() => setShowExerciseSelector(true)} className="btn btn-secondary btn-sm">
+                  <button onClick={() => openExerciseSelector()} className="btn btn-secondary btn-sm">
                     Kütüphaneden Seç
                   </button>
                 </div>
@@ -664,8 +744,19 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
         <div className="modal-backdrop">
           <div className="modal-content glass-panel anim-slide-up selector-modal">
             <div className="modal-header">
-              <h2 className="modal-title">Egzersiz Seçin</h2>
-              <button onClick={() => setShowExerciseSelector(false)} className="modal-close-btn">
+              <div>
+                <h2 className="modal-title">Egzersiz Seçin</h2>
+                <p className="selector-subtitle">
+                  {justAddedIds.length > 0
+                    ? `${justAddedIds.length} hareket eklendi`
+                    : 'Birden fazla hareket seçebilirsiniz'}
+                </p>
+              </div>
+              <button
+                onClick={closeExerciseSelector}
+                className="modal-close-btn"
+                aria-label="Egzersiz seçimini kapat"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -692,23 +783,45 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
               ))}
             </div>
 
+            <p className="selector-result-count" aria-live="polite">
+              {filteredExercises.length} sonuç
+            </p>
+
             <div className="selector-list">
               {filteredExercises.length === 0 && (
                 <p className="selector-empty">Bu filtreye uyan egzersiz bulunamadı.</p>
               )}
-              {filteredExercises.map((ex) => (
-                <button
-                  key={ex.id}
-                  onClick={() => handleAddExerciseToProgram(ex)}
-                  className="selector-item"
-                >
-                  <div>
-                    <p className="selector-item-name">{ex.name}</p>
-                    <span className="badge badge-violet">{ex.category}</span>
-                  </div>
-                  <Plus size={16} className="selector-plus-icon" />
-                </button>
-              ))}
+              {filteredExercises.map((ex) => {
+                const addedCount = justAddedIds.filter(id => id === ex.id).length;
+                return (
+                  <button
+                    key={ex.id}
+                    onClick={() => handleAddExerciseToProgram(ex)}
+                    className={`selector-item ${addedCount > 0 ? 'added' : ''}`}
+                  >
+                    <div className="selector-item-text">
+                      <p className="selector-item-name">{ex.name}</p>
+                      {selectedCategory === 'All' && (
+                        <span className="badge badge-violet">{ex.category}</span>
+                      )}
+                    </div>
+                    {addedCount > 0 ? (
+                      <span className="selector-added-mark" aria-label={`${ex.name} eklendi`}>
+                        <Check size={16} />
+                        {addedCount > 1 && <span className="selector-added-count">{addedCount}</span>}
+                      </span>
+                    ) : (
+                      <Plus size={18} className="selector-plus-icon" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="selector-footer">
+              <button onClick={closeExerciseSelector} className="btn btn-primary selector-done-btn">
+                {justAddedIds.length > 0 ? `Bitti (${justAddedIds.length})` : 'Bitti'}
+              </button>
             </div>
           </div>
         </div>
@@ -802,6 +915,20 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 12px;
+          }
+
+          /* Uzun listede başlık ve "Egzersiz Ekle" erişilebilir kalsın; ayrıca
+             mobil üst çubuğun altına kayıp okunmaz hale gelmesini önler. */
+          @media (max-width: 1024px) {
+            .builder-exercises-section .section-header {
+              position: sticky;
+              top: calc(60px + env(safe-area-inset-top, 0px));
+              z-index: 20;
+              background: var(--bg-primary);
+              padding: 10px 0;
+              margin: 0 -2px;
+            }
           }
 
           .builder-exercises-list {
@@ -838,13 +965,110 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
           .builder-card-top {
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
+            align-items: center;
+            gap: 8px;
+          }
+
+          .builder-card-title-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            min-width: 0;
+            flex: 1;
+          }
+
+          /* Sürükleme tutamacı: görsel olarak küçük, dokunma alanı 44px. */
+          .drag-handle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            margin-left: -10px;
+            color: var(--text-muted);
+            cursor: grab;
+            touch-action: none;
+            flex-shrink: 0;
+          }
+
+          .builder-ex-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+            min-height: 44px;
+            padding: 4px 2px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+          }
+
+          .builder-ex-toggle-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
           }
 
           .builder-ex-name {
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 700;
+            color: var(--text-primary);
+            overflow-wrap: anywhere;
+          }
+
+          .builder-ex-summary {
+            font-size: 12px;
+            color: var(--text-secondary);
+            font-variant-numeric: tabular-nums;
+          }
+
+          .builder-ex-chevron {
+            color: var(--text-muted);
+            flex-shrink: 0;
+            transition: transform var(--transition-fast);
+          }
+
+          .builder-exercise-card.expanded .builder-ex-chevron {
+            transform: rotate(180deg);
+          }
+
+          .builder-advanced-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            min-height: 44px;
+            padding: 0 4px;
+            background: transparent;
+            border: none;
+            color: var(--accent-violet);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+          }
+
+          .builder-advanced-toggle .rotated {
+            transform: rotate(180deg);
+          }
+
+          .builder-advanced-hint {
+            flex-basis: 100%;
+            font-size: 12px;
+            line-height: 1.5;
+            color: var(--text-secondary);
             margin-bottom: 4px;
+          }
+
+          .builder-lock-hint {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-top: 8px;
           }
 
           .btn-remove-ex {
@@ -862,25 +1086,48 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             background: rgba(239, 68, 68, 0.1);
           }
 
+          /* Ayar alanları sabit genişlikli bir ızgarada: eskiden her input farklı
+             genişlikteydi ve dar ekranda etiketler alt alta kayıyordu. */
           .builder-card-settings {
-            display: flex;
-            gap: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px 16px;
             border-bottom: 1px solid var(--border-light);
             padding-bottom: 14px;
           }
 
+          .builder-card-settings.advanced {
+            border-bottom: none;
+          }
+
           .inline-group {
+            display: flex;
             flex-direction: row;
             align-items: center;
-            gap: 12px;
+            justify-content: space-between;
+            gap: 10px;
             margin-bottom: 0;
+            min-width: 0;
+          }
+
+          .inline-group.note-group {
+            grid-column: 1 / -1;
           }
 
           .mini-input {
-            width: 70px;
+            width: 84px;
+            min-height: 44px;
             padding: 6px 10px;
             text-align: center;
-            font-size: 14px;
+            font-size: 15px;
+            font-variant-numeric: tabular-nums;
+            flex-shrink: 0;
+          }
+
+          .note-group .form-input {
+            flex: 1;
+            min-width: 0;
+            min-height: 44px;
           }
 
           /* Sets editor formatting */
@@ -932,6 +1179,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 4px;
             width: 100%;
             height: 38px;
             background: rgba(255, 255, 255, 0.02);
@@ -1041,19 +1289,95 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
           }
 
           /* Selector Modal specific */
+          /* Seçici: masaüstünde kutu, mobilde tam yükseklikli alt sayfa. Liste
+             esneyerek kalan alanı doldurur, başlık ve alt çubuk sabit kalır. */
           .selector-modal {
-            max-width: 420px;
+            max-width: 460px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            max-height: min(85vh, 760px);
+          }
+
+          .selector-subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
           }
 
           .selector-search {
-            margin-bottom: 12px;
+            margin-bottom: 10px;
           }
 
+          .selector-search .form-input {
+            min-height: 44px;
+          }
+
+          /* Tek satır, yatay kaydırmalı: 8 kategori sarıldığında üç satır yer
+             kaplayıp listeye sadece birkaç satır bırakıyordu. */
           .selector-filters {
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            overflow-x: auto;
             gap: 8px;
-            margin-bottom: 16px;
+            margin-bottom: 10px;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+          }
+
+          .selector-filters::-webkit-scrollbar {
+            display: none;
+          }
+
+          .selector-filters .filter-badge {
+            flex-shrink: 0;
+            min-height: 38px;
+          }
+
+          .selector-result-count {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-variant-numeric: tabular-nums;
+          }
+
+          .selector-footer {
+            padding-top: 12px;
+            margin-top: 4px;
+            border-top: 1px solid var(--border-light);
+          }
+
+          .selector-done-btn {
+            width: 100%;
+            min-height: 48px;
+          }
+
+          .selector-added-mark {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            color: var(--accent-mint);
+            font-weight: 700;
+            font-size: 13px;
+          }
+
+          .selector-item.added {
+            border-color: rgba(16, 185, 129, 0.35);
+            background: rgba(16, 185, 129, 0.06);
+          }
+
+          .selector-item-text {
+            min-width: 0;
+          }
+
+          @media (max-width: 768px) {
+            .selector-modal {
+              max-width: 100%;
+              max-height: 92vh;
+              height: 92vh;
+              border-bottom-left-radius: 0;
+              border-bottom-right-radius: 0;
+            }
           }
 
           .selector-empty {
@@ -1064,7 +1388,8 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
           }
 
           .selector-list {
-            max-height: 300px;
+            flex: 1;
+            min-height: 0;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
@@ -1076,6 +1401,8 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 10px;
+            min-height: 56px;
             padding: 10px 14px;
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border-light);
