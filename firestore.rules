@@ -9,13 +9,40 @@ service cloud.firestore {
 
     // Public programs hub: anyone authenticated can read; only creator can write/delete
     match /public_programs/{programId} {
+      // A non-creator may only toggle their OWN vote: the counter must move by
+      // exactly one in the matching direction, and upvotedBy must change by
+      // exactly this caller's uid. Anything else (arbitrary counts, wiping the
+      // voter list, voting twice) is rejected.
+      function voters() {
+        return resource.data.get('upvotedBy', []);
+      }
+      function upvotesBefore() {
+        return resource.data.get('upvotes', 0);
+      }
+      function isSelfVote() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['upvotes', 'upvotedBy'])
+               && !(request.auth.uid in voters())
+               && request.resource.data.upvotedBy == voters().concat([request.auth.uid])
+               && request.resource.data.upvotes == upvotesBefore() + 1;
+      }
+      function isSelfUnvote() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['upvotes', 'upvotedBy'])
+               && (request.auth.uid in voters())
+               && request.resource.data.upvotedBy == voters().removeAll([request.auth.uid])
+               && request.resource.data.upvotes == upvotesBefore() - 1;
+      }
+
       allow read: if request.auth != null;
       allow create: if request.auth != null
-                    && request.resource.data.creatorId == request.auth.uid;
+                    && request.resource.data.creatorId == request.auth.uid
+                    && request.resource.data.upvotes is int
+                    && request.resource.data.upvotes >= 0;
       allow update: if request.auth != null
                     && (resource.data.creatorId == request.auth.uid
-                        || request.resource.data.diff(resource.data).affectedKeys()
-                             .hasOnly(['upvotes', 'upvotedBy']));
+                        || isSelfVote()
+                        || isSelfUnvote());
       allow delete: if request.auth != null
                     && resource.data.creatorId == request.auth.uid;
     }
