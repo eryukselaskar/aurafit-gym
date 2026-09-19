@@ -134,6 +134,7 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     title: 'AuraFit',
+    icon: path.join(__dirname, 'build', 'icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: false,
