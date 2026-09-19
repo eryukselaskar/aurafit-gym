@@ -1114,6 +1114,24 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
 
                 {/* Mobile View (Sleek Horizontal Player Bar) */}
                 <div className="mobile-only mobile-horizontal-rest" style={{ width: '100%' }}>
+                  {/* Kalan süreyi tek bakışta okunur kılan ilerleme şeridi.
+                      Masaüstünde dairesel sayaç vardı, mobilde yalnızca rakam
+                      kalıyordu. transform kullanılıyor (layout tetiklemez). */}
+                  <div
+                    className="rest-progress-track"
+                    role="progressbar"
+                    aria-label="Kalan dinlenme süresi"
+                    aria-valuemin={0}
+                    aria-valuemax={restDuration}
+                    aria-valuenow={restSecondsLeft}
+                    aria-valuetext={`${restSecondsLeft} saniye kaldı`}
+                  >
+                    <div
+                      className="rest-progress-fill"
+                      style={{ transform: `scaleX(${restDuration > 0 ? restSecondsLeft / restDuration : 0})` }}
+                    />
+                  </div>
+
                   <div className="rest-info-group">
                     <Bell className="bell-icon animated-bell" size={18} />
                     <div className="rest-details">
@@ -1121,7 +1139,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                       <span className="rest-next-lbl">Sıradaki: {currentRestExercise}</span>
                     </div>
                   </div>
-                  
+
                   <div className="rest-counter-val">
                     {restSecondsLeft} <span className="sec-lbl">sn</span>
                   </div>
@@ -1588,9 +1606,13 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           .mobile-only { display: block !important; }
         }
 
-        /* Mobile Row Styles */
+        /* Mobile Row Styles
+           Etiket sütunu ağırlık pill'i tarafından eziliyordu: "Set 1" iki,
+           "Hedef: 50kg x 6-10 tek" dört satıra bölünüyordu. Etiket artık kendi
+           satırını alıyor, pill ve onay kutusu altta yan yana duruyor. */
         .active-table-row-mobile {
           display: flex;
+          flex-wrap: wrap;
           align-items: center;
           justify-content: space-between;
           padding: 12px 16px;
@@ -1610,26 +1632,33 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
 
         .set-mobile-info {
           display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 2px;
-          flex: 1;
+          flex-direction: row;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 4px 8px;
+          flex: 1 1 100%;
+          min-width: 0;
         }
 
         .set-num-badge {
           font-size: 14px;
           font-weight: 800;
           color: var(--text-primary);
+          white-space: nowrap;
         }
 
         .set-target-desc {
           font-size: 11px;
           color: var(--text-muted);
           font-weight: 600;
+          white-space: nowrap;
+          font-variant-numeric: tabular-nums;
         }
 
         .mobile-set-log-pill {
           display: flex;
+          flex: 1;
+          min-width: 0;
           align-items: center;
           justify-content: center;
           gap: 8px;
@@ -1670,11 +1699,13 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
 
         /* Mobile Horizontal Rest Banner */
         .mobile-horizontal-rest {
+          position: relative;
           display: flex;
           align-items: center;
           justify-content: space-between;
           width: 100%;
           gap: 12px;
+          padding-top: 8px;
         }
 
         .rest-info-group {
@@ -1682,6 +1713,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           align-items: center;
           gap: 10px;
           flex: 1;
+          min-width: 0;
         }
 
         .rest-details {
@@ -1689,6 +1721,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           flex-direction: column;
           align-items: flex-start;
           gap: 2px;
+          min-width: 0;
         }
 
         .rest-title-lbl {
@@ -1698,19 +1731,45 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           letter-spacing: 0.05em;
         }
 
+        /* Sabit 130px'lik kutu yüzünden sıradaki hareketin adı neredeyse her
+           zaman kesiliyordu ("Sıradaki: Incline Che..."). Dinlenme sırasında en
+           çok bakılan bilgi bu; iki satıra kadar sarmasına izin veriliyor. */
         .rest-next-lbl {
           font-size: 12px;
           font-weight: 700;
           color: var(--text-primary);
-          white-space: nowrap;
+          line-height: 1.3;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
           overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 130px;
+          overflow-wrap: anywhere;
+        }
+
+        .rest-progress-track {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: rgba(255, 255, 255, 0.08);
+          overflow: hidden;
+          border-radius: var(--radius-full);
+        }
+
+        .rest-progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, var(--accent-cyan), var(--accent-violet));
+          transform-origin: left center;
+          transition: transform 1s linear;
+          will-change: transform;
         }
 
         .rest-counter-val {
           font-family: var(--font-headings);
-          font-size: 20px;
+          font-variant-numeric: tabular-nums;
+          flex-shrink: 0;
+          font-size: 22px;
           font-weight: 800;
           color: var(--text-primary);
           display: flex;
