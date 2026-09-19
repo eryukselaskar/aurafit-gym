@@ -4,7 +4,6 @@ import { Dashboard } from './components/Dashboard';
 import { ProgramBuilder } from './components/ProgramBuilder';
 import { ExerciseLibrary } from './components/ExerciseLibrary';
 import { ActiveWorkout } from './components/ActiveWorkout';
-import { Explore } from './components/Explore';
 import { auth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, db, signInWithCredential } from './utils/firebase';
 import type { User } from './utils/firebase';
 import { getRedirectResult } from 'firebase/auth';
@@ -22,10 +21,7 @@ import {
   syncDeleteHistory,
   syncSaveWeightLog,
   syncDeleteWeightLog,
-  syncSavePersonalRecord,
-  publishProgramToHub,
-  fetchPublicPrograms,
-  upvotePublicProgram
+  syncSavePersonalRecord
 } from './utils/firebaseSync';
 import {
   getExercises,
@@ -40,12 +36,10 @@ import {
   savePersonalRecords,
   getCatalog,
   loadFullCatalog,
-  INITIAL_PROGRAMS,
-  getPublicPrograms,
-  savePublicPrograms
+  INITIAL_PROGRAMS
 } from './utils/localStorage';
 import { collection, onSnapshot } from 'firebase/firestore';
-import type { ActiveTab, Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord, PublicProgram, WorkoutSession } from './types';
+import type { ActiveTab, Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord, WorkoutSession } from './types';
 import { Sparkles, X, Play } from 'lucide-react';
 
 // Electron'daki yerel sunucu, sistem tarayıcısından gelen kimlik bilgisini bu
@@ -83,7 +77,6 @@ function App() {
   const [history, setHistory] = useState<CompletedWorkout[]>(() => getHistory());
   const [weightLogs, setWeightLogs] = useState<WeightLog[]>(() => getWeightLogs());
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>(() => getPersonalRecords());
-  const [publicPrograms, setPublicPrograms] = useState<PublicProgram[]>(() => getPublicPrograms());
   
   // Firebase Auth states
   const [userId, setUserId] = useState<string | null>(null);
@@ -130,7 +123,6 @@ function App() {
     setHistory(getHistory());
     setWeightLogs(getWeightLogs());
     setPersonalRecords(getPersonalRecords());
-    setPublicPrograms(getPublicPrograms());
     setIsLoading(false);
   };
 
@@ -656,12 +648,6 @@ function App() {
       }
     });
 
-    const unsubPublic = onSnapshot(collection(db, 'public_programs'), (snap) => {
-      const docs = snap.docs.map(d => d.data() as PublicProgram);
-      setPublicPrograms(docs);
-      savePublicPrograms(docs);
-    });
-
     // Turn off loading once initial cache subscription connects (600ms)
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -673,7 +659,6 @@ function App() {
       unsubHistory();
       unsubWeightLogs();
       unsubPRs();
-      unsubPublic();
       clearTimeout(timer);
     };
   }, [userId]);
@@ -946,97 +931,6 @@ function App() {
     }
   };
 
-  // Social Explore Feed Handlers
-  const handlePublishProgram = async (program: WorkoutProgram, creatorName: string) => {
-    if (!userId) {
-      throw new Error("Paylaşım yapabilmek için internet bağlantısı gereklidir.");
-    }
-    
-    const publicProgId = `public-${program.id}-${userId}`;
-    const existingPub = publicPrograms.find(p => p.id === publicProgId);
-    const newPublicProg: PublicProgram = {
-      id: publicProgId,
-      originalProgramId: program.id,
-      name: program.name,
-      description: program.description,
-      exercises: program.exercises || [],
-      sessions: program.sessions || [],
-      creatorId: userId,
-      creatorName,
-      upvotes: existingPub ? (existingPub.upvotes || 0) : 0,
-      upvotedBy: existingPub ? (existingPub.upvotedBy || []) : [],
-      createdAt: new Date().toISOString()
-    };
-
-    // Optimistically update local state & cache
-    setPublicPrograms(prev => {
-      const updated = [newPublicProg, ...prev.filter(p => p.id !== publicProgId)];
-      savePublicPrograms(updated);
-      return updated;
-    });
-
-    await publishProgramToHub(program, creatorName, userId);
-    
-    // Reload public programs
-    try {
-      const updatedPublic = await fetchPublicPrograms();
-      setPublicPrograms(updatedPublic);
-      savePublicPrograms(updatedPublic);
-    } catch (err) {
-      console.error("Failed to refresh public programs list:", err);
-    }
-  };
-
-  const handleUpvoteProgram = async (programId: string) => {
-    if (!userId) return;
-    // Optimistic toggle
-    setPublicPrograms(prev => prev.map(p => {
-      if (p.id === programId) {
-        const upvotedBy = p.upvotedBy || [];
-        const hasUpvoted = upvotedBy.includes(userId);
-        return {
-          ...p,
-          upvotes: hasUpvoted ? p.upvotes - 1 : p.upvotes + 1,
-          upvotedBy: hasUpvoted ? upvotedBy.filter(uid => uid !== userId) : [...upvotedBy, userId]
-        };
-      }
-      return p;
-    }));
-
-    try {
-      await upvotePublicProgram(programId, userId);
-    } catch (err) {
-      console.error("Upvote sync failed, reloading:", err);
-      try {
-        const refreshed = await fetchPublicPrograms();
-        setPublicPrograms(refreshed);
-      } catch (e) {
-        console.error("Error refreshing after failed upvote:", e);
-      }
-    }
-  };
-
-  const handleImportProgram = (publicProg: PublicProgram) => {
-    const importedProg: WorkoutProgram = {
-      id: `prog-imported-${Date.now()}`,
-      name: publicProg.name,
-      description: `Topluluktan kopyalandı (Yazar: ${publicProg.creatorName})`,
-      exercises: (publicProg.exercises || []).map(ex => ({
-        ...ex,
-        id: `ex-imported-${Date.now()}-${Math.random()}`
-      })),
-      sessions: publicProg.sessions ? publicProg.sessions.map(s => ({
-        ...s,
-        exercises: (s.exercises || []).map(ex => ({
-          ...ex,
-          id: `ex-imported-${Date.now()}-${Math.random()}`
-        }))
-      })) : undefined,
-      createdAt: new Date().toISOString()
-    };
-    handleSaveProgram(importedProg);
-  };
-
   // History Handlers
   const handleDeleteHistoryItem = async (id: string) => {
     const updated = history.filter(h => h.id !== id);
@@ -1087,16 +981,6 @@ function App() {
           />
         </div>
 
-        <div style={{ display: activeTab === 'explore' ? 'block' : 'none' }}>
-          <Explore
-            publicPrograms={publicPrograms}
-            personalPrograms={programs}
-            userId={userId}
-            publishProgram={handlePublishProgram}
-            upvoteProgram={handleUpvoteProgram}
-            importProgram={handleImportProgram}
-          />
-        </div>
 
         <div style={{ display: activeTab === 'profile' ? 'block' : 'none' }}>
           <Profile

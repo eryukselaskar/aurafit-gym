@@ -17,7 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isWor
     { id: 'dashboard', label: 'Özet Panel', icon: LayoutDashboard },
     { id: 'programs', label: 'Programlarım', icon: Calendar },
     { id: 'exercises', label: 'Egzersizler', icon: BookOpen }
-    // Topluluk/Keşfet sekmesi şimdilik devre dışı
+    // Not: Topluluk/Keşfet özelliği kaldırıldı.
   ] as const;
 
   return (
