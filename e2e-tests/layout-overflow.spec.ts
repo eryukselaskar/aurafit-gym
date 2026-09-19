@@ -10,7 +10,7 @@ import { test, expect } from '@playwright/test';
  * içerik kırpılması olarak görünüyordu.
  */
 
-const WIDTHS = [360, 441, 768];
+const WIDTHS = [360, 441, 768, 1024, 1440];
 
 /** Kasıtlı yatay kaydırma alanlarının dışında kalan taşan öğeleri döndürür. */
 const findOverflowing = async (page: import('@playwright/test').Page) =>

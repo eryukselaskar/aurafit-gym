@@ -11,6 +11,7 @@ import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
 import { Capacitor } from '@capacitor/core';
 import { LoginScreen } from './components/LoginScreen';
 import { Profile } from './components/Profile';
+import { ConfirmDialog } from './components/ConfirmDialog';
 import {
   syncSaveExercise,
   syncPrograms,
@@ -113,6 +114,13 @@ function App() {
   const [sessionSelectProgram, setSessionSelectProgram] = useState<WorkoutProgram | null>(null);
 
   const [profileSubTab, setProfileSubTab] = useState<'account' | 'history' | 'metrics'>('account');
+
+  // Native alert/confirm yerine uygulama içi pencereler. Mobil WebView'da
+  // native diyaloglar tüm JavaScript'i blokluyordu.
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+  // Devam eden antrenman varken başlatılmak istenen program bekletilir.
+  const [pendingStart, setPendingStart] = useState<{ program: WorkoutProgram; session?: WorkoutSession } | null>(null);
 
 
   // Fallback to local storage (offline database)
@@ -266,7 +274,7 @@ function App() {
         }
       } catch (err: unknown) {
         console.error("External Google Sign-In failed:", err);
-        alert("Tarayıcı ile giriş yapılamadı: " + errorMessage(err));
+        setAuthError("Tarayıcı ile giriş yapılamadı: " + errorMessage(err));
       } finally {
         setIsWaitingForBrowser(false);
         setIsLoading(false);
@@ -372,7 +380,7 @@ function App() {
       const code = (err as { code?: string })?.code;
       const isCancellation = message.includes('canceled') || code === '12501' || message.includes('12501');
       if (!isCancellation) {
-        alert("Google ile giriş yapılamadı: " + message);
+        setAuthError("Google ile giriş yapılamadı: " + message);
       }
     } finally {
       setIsLoading(false);
@@ -380,8 +388,7 @@ function App() {
   };
 
   const handleSignOut = async () => {
-    const confirmLogout = window.confirm("Çıkış yapmak istediğinize emin misiniz? Çevrimdışı/Misafir moduna geçiş yapacaksınız.");
-    if (!confirmLogout) return;
+    setConfirmSignOut(false);
     try {
       setIsLoading(true);
 
@@ -722,13 +729,17 @@ function App() {
 
   // Active Session Handlers
   const handleStartWorkout = (program: WorkoutProgram, session?: WorkoutSession) => {
+    // Devam eden bir antrenman varsa önce onay al; onaydan sonra bu fonksiyon
+    // startWorkoutConfirmed üzerinden yeniden çağrılır.
     if (isWorkoutActive) {
-      const confirmSwitch = window.confirm(
-        'Zaten devam eden bir antrenmanınız var. Mevcut olanı iptal edip yenisine başlamak istiyor musunuz?'
-      );
-      if (!confirmSwitch) return;
+      setPendingStart({ program, session });
+      return;
     }
 
+    startWorkoutConfirmed(program, session);
+  };
+
+  const startWorkoutConfirmed = (program: WorkoutProgram, session?: WorkoutSession) => {
     if (!session && program.sessions && program.sessions.length > 0) {
       setSessionSelectProgram(program);
       return;
@@ -986,7 +997,7 @@ function App() {
           <Profile
             currentUser={currentUser}
             onGoogleSignIn={handleGoogleSignIn}
-            onSignOut={handleSignOut}
+            onSignOut={() => setConfirmSignOut(true)}
             isLoading={isLoading}
             history={history}
             deleteHistoryItem={handleDeleteHistoryItem}
@@ -1182,7 +1193,37 @@ function App() {
         </div>
       )}
 
-      {/* Profile Modal has been migrated to a dedicated tab page */}
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="Çıkış yap"
+        message="Çıkış yaptığınızda misafir moduna geçersiniz ve bu cihazdaki veriler sıfırlanır."
+        confirmLabel="Çıkış yap"
+        destructive
+        onConfirm={handleSignOut}
+        onCancel={() => setConfirmSignOut(false)}
+      />
+
+      <ConfirmDialog
+        open={pendingStart !== null}
+        title="Devam eden antrenman var"
+        message="Mevcut antrenmanı iptal edip yenisine başlamak istiyor musunuz?"
+        confirmLabel="Yenisine başla"
+        destructive
+        onConfirm={() => {
+          if (pendingStart) startWorkoutConfirmed(pendingStart.program, pendingStart.session);
+          setPendingStart(null);
+        }}
+        onCancel={() => setPendingStart(null)}
+      />
+
+      <ConfirmDialog
+        open={authError !== null}
+        alertOnly
+        title="Giriş yapılamadı"
+        message={authError ?? ''}
+        onConfirm={() => setAuthError(null)}
+        onCancel={() => setAuthError(null)}
+      />
     </div>
   );
 }

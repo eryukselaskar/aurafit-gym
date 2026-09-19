@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Calendar, TrendingUp, ChevronUp, Activity, Flame, Calculator } from 'lucide-react';
 import type { WeightLog } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface MetricsTrackerProps {
   weightLogs: WeightLog[];
@@ -48,6 +49,9 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
   deleteWeightLog
 }) => {
   const [activeMetric, setActiveMetric] = useState<MetricType>('weight');
+  // window.confirm / alert yerine uygulama içi pencere.
+  const [logToDelete, setLogToDelete] = useState<string | null>(null);
+  const [formAlert, setFormAlert] = useState<string | null>(null);
   
   // Form states
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -84,7 +88,7 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!weight || parseFloat(weight) <= 0) {
-      alert('Lütfen geçerli bir kilo girin.');
+      setFormAlert('Lütfen geçerli bir kilo girin.');
       return;
     }
 
@@ -640,9 +644,7 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
                     <span className="log-val">{log.thigh ? `${log.thigh} cm` : '-'}</span>
                     <button 
                       onClick={() => {
-                        if (window.confirm('Bu ölçüm kaydını silmek istediğinizden emin misiniz?')) {
-                          deleteWeightLog(log.id);
-                        }
+                        setLogToDelete(log.id);
                       }} 
                       className="btn-delete-log"
                     >
@@ -659,9 +661,7 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
                       </span>
                       <button 
                         onClick={() => {
-                          if (window.confirm('Bu ölçüm kaydını silmek istediğinizden emin misiniz?')) {
-                            deleteWeightLog(log.id);
-                          }
+                        setLogToDelete(log.id);
                         }} 
                         className="btn-delete-log-mobile"
                       >
@@ -1366,6 +1366,28 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
           }
         }
       `}</style>
+
+      <ConfirmDialog
+        open={logToDelete !== null}
+        destructive
+        title="Ölçüm kaydını sil"
+        message="Bu ölçüm kaydı kalıcı olarak silinecek. Devam etmek istiyor musunuz?"
+        confirmLabel="Sil"
+        onConfirm={() => {
+          if (logToDelete) deleteWeightLog(logToDelete);
+          setLogToDelete(null);
+        }}
+        onCancel={() => setLogToDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={formAlert !== null}
+        alertOnly
+        title="Eksik bilgi"
+        message={formAlert ?? ''}
+        onConfirm={() => setFormAlert(null)}
+        onCancel={() => setFormAlert(null)}
+      />
     </div>
   );
 };
