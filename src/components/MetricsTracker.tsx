@@ -382,7 +382,7 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
 
             {/* Auto-Calculated Body Fat Display */}
             {bodyFat && (
-              <div className="form-calculated-info" style={{ marginTop: '4px', fontSize: '13px', color: 'var(--accent-cyan)', background: 'rgba(6, 182, 212, 0.05)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px dashed rgba(6, 182, 212, 0.2)', textAlign: 'left' }}>
+              <div className="form-calculated-info" style={{ marginTop: '4px', fontSize: '13px', color: 'var(--accent-cyan)', background: 'var(--accent-cyan-bg)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--accent-cyan-border)', textAlign: 'left' }}>
                 Otomatik Hesaplanan Yağ Oranı: <strong>%{bodyFat}</strong> (YMCA Yöntemi ile Kilo ve Bel ölçümünüze göre)
               </div>
             )}

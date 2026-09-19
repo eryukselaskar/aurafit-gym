@@ -832,8 +832,8 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
             onClick={toggleTimer}
             className={`btn-timer-toggle ${isTimerRunning ? 'running' : 'paused'}`}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'var(--surface-4)',
+              border: '1px solid var(--border-medium)',
               borderRadius: '50%',
               width: '28px',
               height: '28px',
@@ -880,7 +880,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   {renderSparkline(ex.exerciseId)}
                 </div>
                 {ex.notes && (
-                  <div className="exercise-coach-note" style={{ marginTop: '6px', fontSize: '12px', color: 'var(--accent-cyan)', fontStyle: 'italic', background: 'rgba(6, 182, 212, 0.05)', padding: '6px 10px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
+                  <div className="exercise-coach-note" style={{ marginTop: '6px', fontSize: '12px', color: 'var(--accent-cyan)', fontStyle: 'italic', background: 'var(--accent-cyan-bg)', padding: '6px 10px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
                     <strong>Not:</strong> {ex.notes}
                   </div>
                 )}
@@ -1049,7 +1049,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
               rows={2}
               style={{
                 width: '100%',
-                background: 'rgba(255,255,255,0.03)',
+                background: 'var(--surface-3)',
                 border: '1px solid var(--border-light)',
                 borderRadius: 'var(--radius-sm)',
                 color: 'var(--text-primary)',

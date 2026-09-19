@@ -29,6 +29,30 @@
   --accent-amber: #f59e0b;
   --accent-amber-glow: rgba(245, 158, 11, 0.35);
   --accent-pink: #ec4899;
+
+  /* Tehlike/silme eylemleri. Bileşenlerde #ef4444 ve #f87171 olarak elle
+     yazılıyordu; token olmadığı için tema değişiminde dışarıda kalıyorlardı. */
+  --accent-red: #ef4444;
+  --accent-red-strong: #dc2626;
+  --accent-red-text: #f87171;
+  --accent-red-bg: rgba(239, 68, 68, 0.15);
+  --accent-red-bg-soft: rgba(239, 68, 68, 0.2);
+  --accent-red-border: rgba(239, 68, 68, 0.3);
+
+  /* Kart üzerine bindirilen ince beyaz katmanlar. Aynı değerler farklı
+     yazımlarla (boşluklu/boşluksuz) altı ayrı varyanta dağılmıştı. */
+  --surface-1: rgba(255, 255, 255, 0.01);
+  --surface-2: rgba(255, 255, 255, 0.02);
+  --surface-3: rgba(255, 255, 255, 0.03);
+  --surface-4: rgba(255, 255, 255, 0.05);
+
+  /* Vurgu renklerinin şeffaf zemin/kenarlık tonları. */
+  --accent-cyan-bg: rgba(6, 182, 212, 0.05);
+  --accent-cyan-bg-soft: rgba(6, 182, 212, 0.15);
+  --accent-cyan-border: rgba(6, 182, 212, 0.2);
+  --accent-violet-bg: rgba(139, 92, 246, 0.06);
+  --accent-violet-border: rgba(139, 92, 246, 0.15);
+  --accent-amber-border: rgba(245, 158, 11, 0.3);
   
   --gradient-primary: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
   --gradient-cyan: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);

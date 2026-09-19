@@ -243,7 +243,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                 </div>
                 
                 {(usageCount > 0 || maxWeight > 0) && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--surface-3)' }}>
                     {usageCount > 0 && (
                       <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                         Yapılma: <strong>{usageCount}</strong> seans
@@ -290,7 +290,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}>
               <div className="detail-section">
                 <h4 style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px', fontWeight: 700 }}>Açıklama</h4>
-                <p style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.6', background: 'rgba(255, 255, 255, 0.02)', padding: '12px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.6', background: 'var(--surface-2)', padding: '12px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
                   {selectedExerciseDetail.description || 'Bu egzersiz için henüz bir açıklama eklenmemiş.'}
                 </p>
               </div>
@@ -302,7 +302,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                   const pr = personalRecords.find(p => p.exerciseId === selectedExerciseDetail.id);
                   if (pr) {
                     return (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: 'rgba(6, 182, 212, 0.04)', border: '1px solid rgba(6, 182, 212, 0.15)', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: 'var(--accent-cyan-bg)', border: '1px solid var(--accent-cyan-bg-soft)', borderRadius: 'var(--radius-md)' }}>
                         <div>
                           <p style={{ fontSize: '18px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{pr.maxWeight} kg</p>
                           <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{pr.maxReps} Tekrar</p>
@@ -317,7 +317,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                     );
                   } else {
                     return (
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '12px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '12px', background: 'var(--surface-1)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
                         Henüz bu hareket için rekor kaydı bulunmuyor.
                       </p>
                     );
@@ -345,7 +345,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {exHistory.slice(0, 5).map((session, sIdx) => (
-                          <div key={sIdx} style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                          <div key={sIdx} style={{ padding: '12px', background: 'var(--surface-1)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                               <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)' }}>{session.programName}</span>
                               <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
@@ -369,7 +369,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                     );
                   } else {
                     return (
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '12px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '12px', background: 'var(--surface-1)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
                         Bu egzersizle henüz tamamlanmış bir antrenman bulunmuyor.
                       </p>
                     );

@@ -178,7 +178,7 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
                     <div className="history-expanded-details anim-slide-up" onClick={(e) => e.stopPropagation()}>
                       <h4 className="detail-title">Antrenman Detayları</h4>
                       {workout.notes && (
-                        <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        <div style={{ background: 'var(--accent-violet-bg)', border: '1px solid var(--accent-violet-border)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
                           <span style={{ fontWeight: 700, color: 'var(--accent-violet)', marginRight: '6px' }}>📝 Not:</span>{workout.notes}
                         </div>
                       )}
@@ -554,7 +554,7 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
             <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmDelete(null)}>İptal</button>
             <button
               className="btn btn-danger"
-              style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+              style={{ flex: 1, padding: 14, background: 'var(--accent-red-bg)', border: '1px solid var(--accent-red-border)', color: 'var(--accent-red-text)' }}
               onClick={doDelete}
             >
               Evet, sil

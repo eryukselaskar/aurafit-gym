@@ -503,7 +503,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                   onClick={() => handleRemoveSession(activeSessionIndex)}
                   disabled={programSessions.length <= 1}
                   className="btn btn-secondary btn-icon"
-                  style={{ padding: '10px', color: '#f87171' }}
+                  style={{ padding: '10px', color: 'var(--accent-red-text)' }}
                   title="Bu Günü Sil"
                 >
                   <Trash2 size={16} />
@@ -662,7 +662,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
               <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmModal(null)}>Vazgeç</button>
               <button
                 className="btn btn-danger"
-                style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+                style={{ flex: 1, padding: 14, background: 'var(--accent-red-bg)', border: '1px solid var(--accent-red-border)', color: 'var(--accent-red-text)' }}
                 onClick={confirmModal.onConfirm}
               >
                 Evet, çık
@@ -717,7 +717,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                 onConfirm: () => { setConfirmModal(null); deleteProgram(selectedProgramDetail.id); setSelectedProgramDetail(null); }
               })}
               className="btn btn-secondary btn-delete"
-              style={{ color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+              style={{ color: 'var(--accent-red-text)', borderColor: 'var(--accent-red-bg-soft)' }}
             >
               <Trash2 size={16} style={{ marginRight: '6px' }} /> Sil
             </button>
@@ -741,21 +741,21 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
 
                 <div className="session-ex-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {sess.exercises.map((ex) => (
-                    <div key={ex.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}>
+                    <div key={ex.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--surface-1)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-primary)' }}>{ex.name}</span>
                         <span className="badge badge-violet" style={{ fontSize: '9px', padding: '1px 6px' }}>{ex.category}</span>
                       </div>
                       
                       {ex.notes && (
-                        <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', background: 'rgba(6, 182, 212, 0.05)', padding: '4px 8px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', background: 'var(--accent-cyan-bg)', padding: '4px 8px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
                           <strong>Not:</strong> {ex.notes}
                         </div>
                       )}
 
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px', alignItems: 'center' }}>
                         {ex.sets.map((set, sIdx) => (
-                          <div key={set.id} style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.03)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
+                          <div key={set.id} style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', background: 'var(--surface-3)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
                             S{sIdx + 1}: {formatRepTarget(ex, set)} tekrar x {set.weight}kg {set.rir !== undefined && `[RIR ${set.rir}]`}
                           </div>
                         ))}
@@ -784,21 +784,21 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
 
             <div className="session-ex-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {selectedProgramDetail.exercises.map((ex) => (
-                <div key={ex.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}>
+                <div key={ex.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--surface-1)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-primary)' }}>{ex.name}</span>
                     <span className="badge badge-violet" style={{ fontSize: '9px', padding: '1px 6px' }}>{ex.category}</span>
                   </div>
 
                   {ex.notes && (
-                    <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', background: 'rgba(6, 182, 212, 0.05)', padding: '4px 8px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', background: 'var(--accent-cyan-bg)', padding: '4px 8px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
                       <strong>Not:</strong> {ex.notes}
                     </div>
                   )}
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px', alignItems: 'center' }}>
                     {ex.sets.map((set, sIdx) => (
-                      <div key={set.id} style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.03)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
+                      <div key={set.id} style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', background: 'var(--surface-3)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
                         S{sIdx + 1}: {formatRepTarget(ex, set)} tekrar x {set.weight}kg {set.rir !== undefined && `[RIR ${set.rir}]`}
                       </div>
                     ))}
@@ -825,7 +825,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmModal(null)}>İptal</button>
-              <button className="btn btn-danger" style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
+              <button className="btn btn-danger" style={{ flex: 1, padding: 14, background: 'var(--accent-red-bg)', border: '1px solid var(--accent-red-border)', color: 'var(--accent-red-text)' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
             </div>
           </div>
         </div>
@@ -949,7 +949,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmModal(null)}>İptal</button>
-              <button className="btn btn-danger" style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
+              <button className="btn btn-danger" style={{ flex: 1, padding: 14, background: 'var(--accent-red-bg)', border: '1px solid var(--accent-red-border)', color: 'var(--accent-red-text)' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
             </div>
           </div>
         </div>

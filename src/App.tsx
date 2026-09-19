@@ -1170,7 +1170,7 @@ function App() {
                     alignItems: 'flex-start',
                     padding: '14px 18px',
                     gap: '4px',
-                    background: 'rgba(255, 255, 255, 0.02)',
+                    background: 'var(--surface-2)',
                     border: '1px solid var(--border-light)',
                     borderRadius: 'var(--radius-md)',
                     cursor: 'pointer',

@@ -279,7 +279,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="card-header">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 className="card-title">Kişisel Rekorlar (PR)</h2>
-              <Trophy size={18} style={{ color: 'var(--accent-amber)', filter: 'drop-shadow(0 0 4px rgba(245, 158, 11, 0.3))' }} />
+              <Trophy size={18} style={{ color: 'var(--accent-amber)', filter: 'drop-shadow(0 0 4px var(--accent-amber-border))' }} />
             </div>
             <span className="card-description">Antrenmanlarda kırdığınız en yüksek rekorlar</span>
           </div>
@@ -291,7 +291,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             ) : (
               [...displayPRs].slice(0, 3).map((pr, idx) => (
-                <div key={idx} className="quick-pr-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', transition: 'all var(--transition-fast)' }}>
+                <div key={idx} className="quick-pr-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--surface-2)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', transition: 'all var(--transition-fast)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
                     <Award size={16} style={{ color: 'var(--accent-pink)', flexShrink: 0 }} />
                     <div style={{ minWidth: 0, flex: 1 }}>
