@@ -22,6 +22,13 @@ const MIME_TYPES = {
 
 function startLocalServer(callback) {
   server = http.createServer((req, res) => {
+    // İstek yolunu sorgu dizesinden ayır. Eskiden req.url doğrudan dosya yoluna
+    // ekleniyordu, bu yüzden "/desktop-login.html?port=...&state=..." isteği
+    // "dist/desktop-login.html?port=...&state=..." dosyasını arıyor, bulamayınca
+    // SPA yedeğine düşüp index.html döndürüyordu. Masaüstü giriş akışı bu yüzden
+    // tarayıcıda uygulamanın kendisini açıyor ve hiç tamamlanmıyordu.
+    const { pathname } = new URL(req.url || '/', 'http://localhost');
+
     // Handle CORS preflight options
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
@@ -34,7 +41,7 @@ function startLocalServer(callback) {
     }
 
     // Intercept External Login Trigger
-    if (req.url === '/api/open-external-login') {
+    if (pathname === '/api/open-external-login') {
       savedState = Math.random().toString(36).substring(2);
       const loginUrl = `http://localhost:${serverPort}/desktop-login.html?port=${serverPort}&state=${savedState}`;
       shell.openExternal(loginUrl);
@@ -45,7 +52,7 @@ function startLocalServer(callback) {
     }
 
     // Intercept Auth Callback from system browser
-    if (req.url && req.url.startsWith('/api/auth-callback') && req.method === 'POST') {
+    if (pathname === '/api/auth-callback' && req.method === 'POST') {
       let body = '';
       req.on('data', chunk => { body += chunk; });
       req.on('end', () => {
@@ -81,8 +88,8 @@ function startLocalServer(callback) {
     }
 
     // Decode URI to handle potential special chars in paths
-    let reqPath = decodeURIComponent(req.url || '/');
-    let filePath = path.join(__dirname, 'dist', reqPath === '/' ? 'index.html' : reqPath);
+    const reqPath = decodeURIComponent(pathname);
+    const filePath = path.join(__dirname, 'dist', reqPath === '/' ? 'index.html' : reqPath);
     
     // Safety check to prevent directory traversal
     if (!filePath.startsWith(path.join(__dirname, 'dist'))) {
