@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Calendar, TrendingUp, ChevronUp, Activity, Flame, Calculator } from 'lucide-react';
+import { Plus, Trash2, Calendar, TrendingUp, ChevronUp, Flame, Calculator } from 'lucide-react';
 import type { WeightLog } from '../types';
 import { ConfirmDialog } from './ConfirmDialog';
 
@@ -265,10 +265,8 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
     <div className="metrics-container anim-slide-up">
       {/* Header */}
       <header className="metrics-header">
-        <div>
-          <h1 className="metrics-title">Vücut <span className="cyan-gradient-text">Ölçülerim</span></h1>
-          <p className="metrics-subtitle">Kilonuzu, yağ oranınızı ve bölgesel ölçülerinizi düzenli kaydederek gelişimi izleyin.</p>
-        </div>
+        {/* Sayfa başlığı Profil sekmesinde zaten gösteriliyor; burada tekrar
+            etmek içeriğe gelmeden ~350px yer harcıyordu. */}
         <button 
           onClick={() => setIsFormExpanded(!isFormExpanded)} 
           className="btn btn-primary"
@@ -415,7 +413,6 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
                 onClick={() => setActiveMetric(type)}
                 className={`metric-tab-btn ${activeMetric === type ? 'active' : ''}`}
               >
-                <Activity size={16} />
                 <span>{getMetricHeaderLabel(type)}</span>
               </button>
             ))}
@@ -436,8 +433,8 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
         <button
           type="button"
           onClick={() => setIsCalcExpanded(!isCalcExpanded)}
-          className={`btn ${isCalcExpanded ? 'btn-secondary' : 'btn-primary'}`}
-          style={{ width: '100%', gap: '10px', padding: '14px', borderRadius: 'var(--radius-md)' }}
+          className="btn btn-secondary metrics-calc-toggle"
+          aria-expanded={isCalcExpanded}
         >
           <Calculator size={18} />
           {isCalcExpanded ? 'Hesaplayıcıları Gizle' : 'Sağlık Hesaplayıcıları (VKİ, Kalori)'}
@@ -1120,15 +1117,27 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
           opacity: 1;
         }
 
+        /* Boş durum kartı tek satırlık bir mesaj için ~700px yer kaplıyordu. */
         .empty-metrics-chart {
           display: flex;
           flex-direction: column;
           align-items: center;
           justify-content: center;
-          gap: 12px;
+          gap: 10px;
           color: var(--text-muted);
           text-align: center;
-          padding: 40px;
+          padding: 28px 20px;
+          max-width: 34ch;
+          margin: 0 auto;
+        }
+
+        .metrics-calc-toggle {
+          width: 100%;
+          gap: 10px;
+          padding: 14px;
+          min-height: 48px;
+          border-radius: var(--radius-md);
+          justify-content: center;
         }
 
         .empty-icon {
