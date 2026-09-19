@@ -161,14 +161,15 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
         <div className="search-bar-wrapper">
           <Search className="search-icon" size={20} />
           <input
-            type="text"
+            type="search"
+            aria-label="Egzersiz ara"
             placeholder="Egzersiz adı veya açıklama ara..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
           {searchTerm && (
-            <button onClick={() => setSearchTerm('')} className="search-clear-btn">
+            <button onClick={() => setSearchTerm('')} className="search-clear-btn" aria-label="Aramayı temizle">
               <X size={16} />
             </button>
           )}
@@ -188,8 +189,14 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Sırala:</span>
+            <label
+              htmlFor="library-sort"
+              style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}
+            >
+              Sırala:
+            </label>
             <select
+              id="library-sort"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'name' | 'popularity')}
               className="form-select"
@@ -236,7 +243,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                     <span className={`badge ${getCategoryBadgeClass(ex.category)}`}>{ex.category}</span>
                     {ex.isCustom && <span className="custom-indicator-badge">Özel</span>}
                   </div>
-                  <h3 className="exercise-name" style={{ marginBottom: '4px' }}>{ex.name}</h3>
+                  <h2 className="exercise-name" style={{ marginBottom: '4px' }}>{ex.name}</h2>
                   <p className="exercise-desc clamp-2">
                     {ex.description || 'Bu egzersiz için henüz bir açıklama eklenmemiş.'}
                   </p>

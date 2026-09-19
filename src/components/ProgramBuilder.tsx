@@ -389,7 +389,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
         <div className="builder-form-grid">
           {/* Main Info */}
           <section className="builder-info-card glass-panel">
-            <h3 className="section-title">Program Detayları</h3>
+            <h2 className="section-title">Program Detayları</h2>
             
             {!activeProgram ? (
               <div className="form-group">
@@ -434,8 +434,9 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             )}
 
             <div className="form-group">
-              <label className="form-label">Program Adı *</label>
+              <label className="form-label" htmlFor="program-name">Program Adı *</label>
               <input
+                id="program-name"
                 type="text"
                 placeholder="Örn: Push Günü"
                 value={programName}
@@ -445,8 +446,9 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Açıklama</label>
+              <label className="form-label" htmlFor="program-desc">Açıklama</label>
               <textarea
+                id="program-desc"
                 placeholder="Odak bölgeler veya notlar (isteğe bağlı)"
                 value={programDesc}
                 onChange={(e) => setProgramDesc(e.target.value)}
@@ -489,8 +491,9 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             {isBundleProgram && programSessions[activeSessionIndex] && (
               <div className="session-day-name-editor glass-panel" style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'flex-end', marginBottom: '16px' }}>
                 <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
-                  <label className="form-label">Seçili Günün Başlığı</label>
+                  <label className="form-label" htmlFor="session-name">Seçili Günün Başlığı</label>
                   <input
+                    id="session-name"
                     type="text"
                     value={programSessions[activeSessionIndex].name}
                     onChange={(e) => handleSessionNameChange(e.target.value)}
@@ -512,12 +515,12 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             )}
 
             <div className="section-header">
-              <h3 className="section-title">
+              <h2 className="section-title">
                 {isBundleProgram && programSessions[activeSessionIndex]
                   ? `${programSessions[activeSessionIndex].name.split(' — ')[0]} Egzersizleri`
                   : 'Egzersizler'
                 } ({activeExList.length})
-              </h3>
+              </h2>
               <button onClick={() => openExerciseSelector()} className="btn btn-outline btn-add-ex">
                 <Plus size={16} /> Egzersiz Ekle
               </button>
@@ -887,7 +890,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                 </div>
 
                 <div className="program-card-info">
-                  <h3 className="program-card-name">{program.name}</h3>
+                  <h2 className="program-card-name">{program.name}</h2>
                   <p className="program-card-desc">
                     {program.description || 'Bu program için henüz açıklama eklenmemiş.'}
                   </p>
@@ -922,10 +925,18 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                     Antrenmanı Başlat
                   </button>
                   <div className="card-minor-actions">
-                    <button onClick={() => handleEdit(program)} className="btn-card-action">
+                    <button
+                      onClick={() => handleEdit(program)}
+                      className="btn-card-action"
+                      aria-label={`${program.name} programını düzenle`}
+                    >
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={() => deleteProgram(program.id)} className="btn-card-action btn-delete">
+                    <button
+                      onClick={() => deleteProgram(program.id)}
+                      className="btn-card-action btn-delete"
+                      aria-label={`${program.name} programını sil`}
+                    >
                       <Trash2 size={16} />
                     </button>
                   </div>

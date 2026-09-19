@@ -252,7 +252,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <Dumbbell size={18} />
                     </div>
                     <div className="recent-workout-info">
-                      <h4 className="recent-workout-name">{workout.programName}</h4>
+                      <h3 className="recent-workout-name">{workout.programName}</h3>
                       <p className="recent-workout-date">
                         {formatDateWithDay(workout.date)}
                       </p>
@@ -295,7 +295,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
                     <Award size={16} style={{ color: 'var(--accent-pink)', flexShrink: 0 }} />
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <h4 style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pr.exerciseName}</h4>
+                      <h3 style={{ fontSize: '13px', fontWeight: '700', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pr.exerciseName}</h3>
                       <p style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>{pr.maxReps} Tekrar</p>
                     </div>
                   </div>

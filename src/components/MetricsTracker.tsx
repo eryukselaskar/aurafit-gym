@@ -607,7 +607,7 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
 
       {/* History logs table */}
       <section className="metrics-history glass-panel">
-        <h3 className="section-title">Geçmiş Ölçüm Kayıtları</h3>
+        <h2 className="section-title">Geçmiş Ölçüm Kayıtları</h2>
 
         <div className="metrics-logs-list">
           {weightLogs.length === 0 ? (

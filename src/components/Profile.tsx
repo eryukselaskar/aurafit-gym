@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { User } from '../utils/firebase';
-import { LogOut, User as UserIcon, History as HistoryIcon, Activity } from 'lucide-react';
+import { LogOut, User as UserIcon, History as HistoryIcon, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { History } from './History';
 import { MetricsTracker } from './MetricsTracker';
 import type { CompletedWorkout, WeightLog } from '../types';
@@ -132,17 +132,17 @@ export const Profile: React.FC<ProfileProps> = ({
           <div className="profile-status-card">
             {isAnonymous ? (
               <div className="status-info-box warning">
-                <span className="status-icon">⚠️</span>
+                <AlertTriangle className="status-icon" size={20} aria-hidden="true" />
                 <div>
-                  <h4>Bulut Eşitlemesi Kapalı</h4>
+                  <h3>Bulut Eşitlemesi Kapalı</h3>
                   <p>Verileriniz yalnızca bu tarayıcıda/cihazda saklanır. Tarayıcı önbelleği silinirse veya cihazınız bozulursa verileriniz kaybolabilir.</p>
                 </div>
               </div>
             ) : (
               <div className="status-info-box success">
-                <span className="status-icon">🟢</span>
+                <CheckCircle2 className="status-icon" size={20} aria-hidden="true" />
                 <div>
-                  <h4>Bulut Eşitlemesi Aktif</h4>
+                  <h3>Bulut Eşitlemesi Aktif</h3>
                   <p>Antrenman programlarınız, geçmişiniz, ölçümleriniz ve kişisel rekorlarınız güvenli bir şekilde Google hesabınızla anlık eşitlenmektedir.</p>
                 </div>
               </div>
@@ -453,11 +453,19 @@ export const Profile: React.FC<ProfileProps> = ({
           font-weight: 700;
         }
 
+        /* Eskiden emoji idi ve font-size ile boyutlanıyordu; artık SVG olduğu
+           için renk ve boyut açıkça veriliyor. */
         .status-icon {
-          font-size: 20px;
-          display: flex;
-          align-items: flex-start;
+          flex-shrink: 0;
           margin-top: 2px;
+        }
+
+        .status-info-box.warning .status-icon {
+          color: var(--accent-amber);
+        }
+
+        .status-info-box.success .status-icon {
+          color: var(--accent-mint);
         }
 
         .profile-actions-section {

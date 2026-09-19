@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Check, X, Clock, Plus, ArrowRight, Play, Pause } from 'lucide-react';
+import { Check, X, Clock, Plus, ArrowRight, Play, Pause, FileText, Trophy } from 'lucide-react';
 import type { WorkoutProgram, WorkoutExercise, CompletedWorkout, WorkoutSet, PersonalRecord } from '../types';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
@@ -1040,7 +1040,8 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           {/* Antrenman notu */}
           <div className="glass-panel" style={{ padding: '16px 20px' }}>
             <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-              📝 Antrenman Notu <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opsiyonel)</span>
+              <FileText size={14} aria-hidden="true" style={{ verticalAlign: '-2px', marginRight: 6 }} />
+              Antrenman Notu <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opsiyonel)</span>
             </label>
             <textarea
               value={workoutNote}
@@ -1122,7 +1123,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           </div>
 
           <div className="celebration-card glass-panel anim-slide-up">
-            <span className="pr-trophy">🏆</span>
+            <Trophy className="pr-trophy" size={44} aria-hidden="true" />
             <h2 className="pr-congrats-title">Yeni Kişisel Rekor!</h2>
             <p className="welcome-subtitle">Bu antrenmanda sınırlarınızı zorlayarak yeni zirvelere ulaştınız!</p>
             

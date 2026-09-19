@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Sparkles, ArrowRight, Zap } from 'lucide-react';
 
 interface LoginScreenProps {
   onGoogleSignIn: () => void;
@@ -60,7 +60,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </div>
 
         <div className="login-footer">
-          <p>⚡ Çevrimdışı desteği aktiftir. İnternetiniz olmasa bile antrenman yapmaya devam edebilirsiniz.</p>
+          <p>
+            <Zap size={14} aria-hidden="true" style={{ verticalAlign: 'middle', marginRight: 6 }} />
+            Çevrimdışı desteği aktiftir. İnternetiniz olmasa bile antrenman yapmaya
+            devam edebilirsiniz.
+          </p>
         </div>
       </div>
 
