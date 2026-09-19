@@ -891,6 +891,15 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             align-items: start;
           }
 
+          /* Grid öğelerinin varsayılan min-width:auto değeri, track'i içeriğin
+             min-content genişliğine kilitler. Gün sekmeleri şeridi (yatay
+             kaydırmalı, ~500px) bu yüzden tüm ızgarayı ekrandan taşırıyordu.
+             min-width:0 track'in 1fr'i gerçekten uygulamasını sağlar; şerit de
+             tasarlandığı gibi kendi içinde kayar. */
+          .builder-form-grid > * {
+            min-width: 0;
+          }
+
           .builder-info-card {
             padding: 24px;
             display: flex;
