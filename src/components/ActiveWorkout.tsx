@@ -3,7 +3,7 @@ import { Check, X, Clock, Plus, ArrowRight, Play, Pause } from 'lucide-react';
 import type { WorkoutProgram, WorkoutExercise, CompletedWorkout, WorkoutSet, PersonalRecord } from '../types';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { formatRepTarget } from '../utils/repTarget';
+import { resolveSetTarget } from '../utils/repTarget';
 import { calculatePersonalRecords } from '../utils/personalRecords';
 import { RestTimerPanel } from './RestTimerPanel';
 import { now } from '../utils/id';
@@ -903,13 +903,15 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   const lastHint = lastSet
                     ? `${lastSet.actualWeight ?? lastSet.weight}kg × ${lastSet.actualReps ?? lastSet.reps}`
                     : null;
+                  // Hareket seviyesi hedefleri set seviyesini geçersiz kılar.
+                  const target = resolveSetTarget(ex, set);
                   return (
                   <React.Fragment key={set.id}>
                     {/* Desktop Layout Row */}
                     <div className={`active-table-row data desktop-only ${set.completed ? 'set-done' : ''}`}>
                       <span className="set-num">{setIdx + 1}</span>
                       <div style={{ textAlign: 'left' }}>
-                        <span className="set-target">{set.weight}kg x {formatRepTarget(ex, set)} tek {set.rir !== undefined ? `@RIR${set.rir}` : ''}</span>
+                        <span className="set-target">{target.weight}kg x {target.reps} tek {target.rir !== undefined ? `@RIR${target.rir}` : ''}</span>
                         {lastHint && <div style={{ fontSize: '10px', color: 'var(--accent-mint)', fontWeight: 700, marginTop: '2px' }}>↩ {lastHint}</div>}
                       </div>
 
@@ -917,7 +919,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                         <input
                           type="number"
                           value={set.actualWeight !== undefined ? set.actualWeight : ''}
-                          placeholder={set.weight !== undefined ? set.weight.toString() : ''}
+                          placeholder={target.weight !== undefined ? target.weight.toString() : ''}
                           onChange={(e) =>
                             handleActualChange(exIdx, setIdx, 'actualWeight', parseFloat(e.target.value) || 0)
                           }
@@ -944,7 +946,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                           type="number"
                           min="0"
                           max="10"
-                          placeholder={set.rir !== undefined ? set.rir.toString() : '2'}
+                          placeholder={target.rir !== undefined ? target.rir.toString() : '2'}
                           value={set.actualRir !== undefined ? set.actualRir : ''}
                           onChange={(e) =>
                             handleActualChange(exIdx, setIdx, 'actualRir', parseInt(e.target.value) || 0)
@@ -993,7 +995,10 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                             </button>
                           )}
                         </div>
-                        <span className="set-target-desc">Hedef: {set.weight}kg x {formatRepTarget(ex, set)} tek</span>
+                        <span className="set-target-desc">
+                          Hedef: {target.weight}kg x {target.reps} tek
+                          {target.rir !== undefined && ` · RIR ${target.rir}`}
+                        </span>
                         {lastHint && <span style={{ fontSize: '10px', color: 'var(--accent-mint)', fontWeight: 700 }}>↩ {lastHint}</span>}
                       </div>
 
@@ -1003,11 +1008,11 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                         className="mobile-set-log-pill"
                         disabled={set.completed}
                       >
-                        <span>{set.actualWeight !== undefined ? `${set.actualWeight} kg` : `${set.weight} kg`}</span>
+                        <span>{set.actualWeight !== undefined ? `${set.actualWeight} kg` : `${target.weight} kg`}</span>
                         <span className="pill-divider">x</span>
-                        <span>{set.actualReps !== undefined ? `${set.actualReps} tek` : `${set.reps} tek`}</span>
+                        <span>{set.actualReps !== undefined ? `${set.actualReps} tek` : `${target.repsValue} tek`}</span>
                         <span className="pill-divider">|</span>
-                        <span>{set.actualRir !== undefined ? `RIR ${set.actualRir}` : `RIR ${set.rir !== undefined ? set.rir : '-'}`}</span>
+                        <span>{set.actualRir !== undefined ? `RIR ${set.actualRir}` : `RIR ${target.rir !== undefined ? target.rir : '-'}`}</span>
                       </button>
 
                       <div className="checkbox-cell-mobile">
@@ -1162,21 +1167,21 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
               <div className="slider-label-row">
                 <span>Ağırlık:</span>
                 <span className="slider-value-display">
-                  <strong>{exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight}</strong> kg
+                  <strong>{exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight}</strong> kg
                 </span>
               </div>
               <div className="slider-control-row">
                 <button
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', Math.max(0, cur - 5));
                   }}
                 >-5</button>
                 <button
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', Math.max(0, cur - 2.5));
                   }}
                 >-2.5</button>
@@ -1185,21 +1190,21 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   min="0"
                   max="300"
                   step="2.5"
-                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight}
+                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight}
                   onChange={(e) => handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', parseFloat(e.target.value))}
                   className="touch-slider"
                 />
                 <button
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', cur + 2.5);
                   }}
                 >+2.5</button>
                 <button
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', cur + 5);
                   }}
                 >+5</button>
@@ -1211,14 +1216,14 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
               <div className="slider-label-row">
                 <span>Tekrar:</span>
                 <span className="slider-value-display">
-                  <strong>{exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].reps}</strong> tekrar
+                  <strong>{exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).repsValue}</strong> tekrar
                 </span>
               </div>
               <div className="slider-control-row">
                 <button 
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].reps;
+                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).repsValue;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualReps', Math.max(1, current - 1));
                   }}
                 >
@@ -1229,14 +1234,14 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   min="1" 
                   max="50" 
                   step="1" 
-                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].reps}
+                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).repsValue}
                   onChange={(e) => handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualReps', parseInt(e.target.value))}
                   className="touch-slider"
                 />
                 <button 
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].reps;
+                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).repsValue;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualReps', current + 1);
                   }}
                 >
@@ -1250,14 +1255,14 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
               <div className="slider-label-row">
                 <span>RIR (Tükenişe Kalan):</span>
                 <span className="slider-value-display">
-                  <strong>RIR {exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].rir ?? 2}</strong>
+                  <strong>RIR {exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).rir ?? 2}</strong>
                 </span>
               </div>
               <div className="slider-control-row">
                 <button 
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].rir ?? 2;
+                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).rir ?? 2;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualRir', Math.max(0, current - 1));
                   }}
                 >
@@ -1268,14 +1273,14 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   min="0" 
                   max="10" 
                   step="1" 
-                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].rir ?? 2}
+                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).rir ?? 2}
                   onChange={(e) => handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualRir', parseInt(e.target.value))}
                   className="touch-slider"
                 />
                 <button 
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].rir ?? 2;
+                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).rir ?? 2;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualRir', Math.min(10, current + 1));
                   }}
                 >
