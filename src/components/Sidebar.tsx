@@ -267,7 +267,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isWor
         @media (max-width: 768px) {
           .sidebar-container {
             width: 100%;
-            height: calc(70px + env(safe-area-inset-bottom, 0px));
+            /* Etiketler için 70px -> 76px. main-content'in alt boşluğu (90px)
+               bunu zaten karşılıyor. */
+            height: calc(76px + env(safe-area-inset-bottom, 0px));
             position: fixed;
             bottom: 0;
             top: auto;
@@ -281,8 +283,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isWor
             z-index: 100;
           }
 
-          .sidebar-logo, .sidebar-footer, .nav-label {
+          .sidebar-logo, .sidebar-footer {
             display: none;
+          }
+
+          /* Etiketler mobilde gizleniyordu; geriye anlamı tahmin edilmesi
+             gereken üç ikon kalıyordu. Material'ın alt navigasyon kuralı
+             ikon + metin ister. */
+          .nav-label {
+            display: block;
+            font-size: 10px;
+            line-height: 1.2;
+            font-weight: 600;
+            letter-spacing: 0;
+            text-align: center;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
 
           .sidebar-nav {
@@ -293,9 +311,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, isWor
           }
 
           .nav-item {
-            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             justify-content: center;
+            gap: 3px;
+            padding: 6px 4px;
             flex: 1;
+            min-width: 0;
+            min-height: 48px;
             border-radius: var(--radius-sm);
           }
           

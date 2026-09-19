@@ -15,7 +15,10 @@
 
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  /* #64748b idi: bg-primary'de 4.16:1, kartlarda 3.89:1 — WCAG AA'nın (4.5:1)
+     altındaydı. #7d8da1 üç zeminde de geçiyor (5.84 / 5.47 / 5.00) ve
+     --text-secondary ile arasındaki hiyerarşiyi koruyor. */
+  --text-muted: #7d8da1;
 
   --accent-violet: #8b5cf6;
   --accent-violet-glow: rgba(139, 92, 246, 0.35);
@@ -83,6 +86,40 @@ button, input, select, textarea {
 a {
   text-decoration: none;
   color: inherit;
+}
+
+/* Klavye odağı
+   ------------------------------------------------------------------
+   Daha önce yalnızca form alanlarının odak stili vardı; butonlar, nav
+   öğeleri ve kartlar klavyeyle gezilirken hiçbir iz bırakmıyordu. Masaüstü
+   (Electron) sürümünde bu uygulamayı klavyeyle kullanılamaz hale getiriyordu.
+   :focus-visible kullanıldığı için fare tıklamalarında halka görünmez. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-violet);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Koyu zeminde mor halkayı ayırmak için ince bir dış kontur. */
+:where(button, a):focus-visible {
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.25);
+}
+
+/* Azaltılmış hareket
+   ------------------------------------------------------------------
+   Uygulamada sürekli dönen/nabız atan öğeler var (aktif antrenman ikonu,
+   pulse-border, yükleme parıltısı). Sistem ayarı "hareketi azalt" olan
+   kullanıcılarda bunlar durur; geçişler anlık hale gelir ama işlevsellik
+   korunur. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Scrollbar Customization */
