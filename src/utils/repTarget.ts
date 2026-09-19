@@ -31,3 +31,32 @@ export const validateRepRange = (
   }
   return null;
 };
+
+/**
+ * Bir setin geçerli hedeflerini döndürür.
+ *
+ * Model iki seviyede hedef tutar: hareket seviyesi (tüm setler için geçerli)
+ * ve set seviyesi. Hareket seviyesinde bir değer varsa o kazanır — program
+ * düzenleyici de zaten ilgili set alanını kilitleyip bunu gösterir.
+ *
+ * Bu öncelik eskiden her ekranda ayrı ayrı yazılıyordu ve tutarsızdı:
+ * düzenleyici hareket seviyesindeki ağırlığı/RIR'ı gösterirken aktif antrenman
+ * ekranı set seviyesindeki eski değerleri gösteriyordu. Tek kaynak burası.
+ */
+export const resolveSetTarget = (
+  ex: Pick<WorkoutExercise, 'minReps' | 'maxReps' | 'weight' | 'rir'>,
+  set: Pick<WorkoutSet, 'reps' | 'weight' | 'rir'>
+): { weight: number; reps: string; repsValue: number; rir: number | undefined } => {
+  // Kaydedilecek varsayılan tekrar, hedef aralığın dışına düşmemeli: aralık
+  // 5-8 iken setin taşıdığı 10 değerini göstermek çelişkili oluyordu.
+  let repsValue = set.reps;
+  if (ex.minReps !== undefined && repsValue < ex.minReps) repsValue = ex.minReps;
+  if (ex.maxReps !== undefined && repsValue > ex.maxReps) repsValue = ex.maxReps;
+
+  return {
+    weight: ex.weight ?? set.weight,
+    reps: formatRepTarget(ex, set),
+    repsValue,
+    rir: ex.rir ?? set.rir,
+  };
+};

@@ -1,0 +1,678 @@
+/* MetricsTracker.css
+   Bileşenin içinde <style> şablon dizgisiydi (dosyanın ~%48'i) ve her
+   mount'ta DOM'a yeniden enjekte ediliyordu. Seçiciler global, aynen
+   korundu; index.css'ten sonra yüklenir. */
+
+.metrics-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.metrics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metrics-title {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  margin-bottom: 6px;
+}
+
+.metrics-subtitle {
+  color: var(--text-secondary);
+  font-size: 16px;
+}
+
+/* Form styling */
+.metrics-form-card {
+  padding: 24px;
+}
+
+.metrics-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+}
+
+.form-row.border-top {
+  border-top: 1px solid var(--border-light);
+  padding-top: 20px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Analytics Grid layout */
+.metrics-analytics-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.metrics-dashboard {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  min-height: 280px;
+  padding: 20px;
+  gap: 20px;
+}
+
+.metrics-selector-tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-right: 1px solid var(--border-light);
+  padding-right: 12px;
+}
+
+.metric-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-weight: 600;
+  font-family: var(--font-headings);
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.metric-tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.metric-tab-btn.active {
+  color: #fff;
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.25);
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.1);
+}
+
+.metric-tab-btn.active svg {
+  color: var(--accent-cyan);
+}
+
+/* Chart container & Quick guide styles */
+.chart-container-area {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.chart-canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 180px;
+}
+
+.quick-guide-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(6, 182, 212, 0.04);
+  border: 1px solid rgba(6, 182, 212, 0.15);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.quick-guide-icon {
+  color: var(--accent-cyan);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.quick-guide-text {
+  margin: 0;
+}
+
+.quick-guide-tip {
+  display: inline;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+/* Side Panel Calculators (Stacked layout when expanded) */
+.metrics-side-panel {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-height: 300px;
+}
+
+.panel-tabs {
+  display: flex;
+  gap: 6px;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 10px;
+}
+
+.panel-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  padding: 10px 4px;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.panel-tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.panel-tab-btn.active {
+  color: #fff;
+  background: var(--gradient-primary);
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.2);
+}
+
+.panel-content {
+  flex: 1;
+}
+
+/* Calculator View Formatting */
+.calculator-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.calculator-view h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.calc-inputs-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.calc-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 12px;
+}
+
+.calc-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.calc-input-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.calc-input-group label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.calc-input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  width: 100%;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.calc-input:focus {
+  border-color: var(--border-focus);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.calc-input.select {
+  cursor: pointer;
+}
+
+.calc-input.select option {
+  background: var(--bg-card-solid);
+  color: var(--text-primary);
+}
+
+.calc-result-box {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.result-main-value {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+
+.result-number {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--text-primary);
+  font-family: var(--font-headings);
+}
+
+.result-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.result-status {
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.bmi-gauge-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #3b82f6 0%, #10b981 35%, #f59e0b 65%, #ef4444 100%);
+  margin-top: 15px;
+  position: relative;
+}
+
+.bmi-indicator-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--bg-primary);
+  position: absolute;
+  top: -3px;
+  transform: translateX(-50%);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  transition: left var(--transition-normal);
+}
+
+.bmi-gauge-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-weight: 700;
+}
+
+.calorie-results {
+  align-items: stretch;
+  text-align: left;
+  gap: 10px;
+}
+
+.calorie-metric {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.calorie-lbl {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.calorie-val {
+  font-weight: 700;
+}
+
+.calorie-metric.main-tdee {
+  font-size: 14px;
+  padding-top: 8px;
+}
+
+.calorie-metric.border-top {
+  border-top: 1px solid var(--border-light);
+}
+
+.font-accent-cyan { color: var(--accent-cyan); }
+.font-accent-violet { color: var(--accent-violet); }
+.font-accent-mint { color: var(--accent-mint); }
+.font-accent-amber { color: var(--accent-amber); }
+
+.calc-notice {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 20px 0;
+  line-height: 1.5;
+}
+
+/* SVG Trend Chart formatting */
+.metrics-chart-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chart-title-lbl {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.metrics-svg-chart {
+  width: 100%;
+  max-height: 200px;
+  overflow: visible;
+}
+
+.metrics-dot {
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+
+.metrics-dot-group:hover .metrics-dot {
+  r: 7px;
+  fill: var(--accent-cyan);
+  stroke: #fff;
+}
+
+.metrics-dot-group:hover .chart-tooltip-text {
+  opacity: 1;
+}
+
+/* Boş durum kartı tek satırlık bir mesaj için ~700px yer kaplıyordu. */
+.empty-metrics-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 28px 20px;
+  max-width: 34ch;
+  margin: 0 auto;
+}
+
+.metrics-calc-toggle {
+  width: 100%;
+  gap: 10px;
+  padding: 14px;
+  min-height: 48px;
+  border-radius: var(--radius-md);
+  justify-content: center;
+}
+
+.empty-icon {
+  color: var(--border-medium);
+}
+
+/* History log table styling */
+.metrics-history {
+  padding: 24px;
+}
+
+.metrics-history .section-title {
+  margin-bottom: 20px;
+}
+
+.metrics-logs-list {
+  overflow-x: auto;
+}
+
+.logs-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 700px;
+}
+
+.table-header-row, .table-data-row {
+  display: grid;
+  grid-template-columns: 1.5fr repeat(6, 1fr) 50px;
+  padding: 12px 16px;
+  align-items: center;
+  border-radius: var(--radius-sm);
+}
+
+.table-header-row {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-light);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+.table-header-row span:first-child {
+  text-align: left;
+}
+
+.table-data-row {
+  border: 1px solid var(--border-light);
+  background: rgba(255, 255, 255, 0.01);
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.table-data-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border-medium);
+}
+
+.log-date-lbl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-align: left !important;
+}
+
+.log-val {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.btn-delete-log {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-delete-log:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.no-logs-msg {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 30px;
+}
+
+/* Anim Utilities */
+.anim-slide-up {
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.mobile-metric-card {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  text-align: left;
+}
+
+.card-top-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  padding-bottom: 8px;
+}
+
+.card-date-lbl {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.btn-delete-log-mobile {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.btn-delete-log-mobile:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 4px;
+}
+
+.card-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.metric-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.01);
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-light);
+  text-align: left;
+}
+
+.box-lbl {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.box-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.box-val.highlight-cyan {
+  color: var(--accent-cyan);
+}
+
+.box-val.highlight-pink {
+  color: var(--accent-pink);
+}
+
+@media (max-width: 768px) {
+  .metrics-dashboard {
+    grid-template-columns: 1fr;
+  }
+  .metrics-selector-tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid var(--border-light);
+    padding-right: 0;
+    padding-bottom: 12px;
+  }
+  .metric-tab-btn {
+    flex: 1;
+    min-width: 90px;
+    justify-content: center;
+  }
+  .metrics-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  .metrics-header .btn {
+    width: 100%;
+  }
+  .metrics-logs-list {
+    overflow-x: visible;
+  }
+  .logs-table {
+    min-width: 0 !important;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .card-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

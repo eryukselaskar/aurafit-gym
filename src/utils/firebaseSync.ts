@@ -1,17 +1,12 @@
 import { db } from './firebase';
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc,
-  setDoc, 
-  deleteDoc,
-  arrayUnion,
-  arrayRemove,
-  increment,
-  runTransaction
+import {
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  deleteDoc
 } from 'firebase/firestore';
-import type { Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord, PublicProgram } from '../types';
+import type { Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord } from '../types';
 import { INITIAL_PROGRAMS } from './localStorage';
 
 // Helper to strip undefined values so Firestore does not throw errors
@@ -91,72 +86,5 @@ export const syncSavePersonalRecord = async (userId: string, pr: PersonalRecord)
 };
 
 // V2 — Social Sharing Hub (explore)
-export const publishProgramToHub = async (
-  program: WorkoutProgram,
-  creatorName: string,
-  creatorId: string
-): Promise<void> => {
-  // We use a unique public program ID based on original program ID + creator ID
-  const publicProgId = `public-${program.id}-${creatorId}`;
-  const docRef = doc(db, 'public_programs', publicProgId);
-  
-  let existingUpvotes = 0;
-  let existingUpvotedBy: string[] = [];
-  
-  try {
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data() as PublicProgram;
-      existingUpvotes = data.upvotes || 0;
-      existingUpvotedBy = data.upvotedBy || [];
-    }
-  } catch (e) {
-    console.warn("Failed to check existing upvotes for re-publish, default to 0:", e);
-  }
-  
-  const publicProg: PublicProgram = {
-    id: publicProgId,
-    originalProgramId: program.id,
-    name: program.name,
-    description: program.description,
-    exercises: program.exercises || [],
-    sessions: program.sessions || [],
-    creatorId,
-    creatorName,
-    upvotes: existingUpvotes,
-    upvotedBy: existingUpvotedBy,
-    createdAt: new Date().toISOString()
-  };
 
-  await setDoc(docRef, toFirestoreData(publicProg));
-};
 
-export const fetchPublicPrograms = async (): Promise<PublicProgram[]> => {
-  const colRef = collection(db, 'public_programs');
-  const snap = await getDocs(colRef);
-  return snap.docs.map(d => d.data() as PublicProgram);
-};
-
-export const upvotePublicProgram = async (programId: string, userId: string): Promise<void> => {
-  const docRef = doc(db, 'public_programs', programId);
-  await runTransaction(db, async (transaction) => {
-    const docSnap = await transaction.get(docRef);
-    if (!docSnap.exists()) return;
-    
-    const data = docSnap.data() as PublicProgram;
-    const upvotedBy = data.upvotedBy || [];
-    const hasUpvoted = upvotedBy.includes(userId);
-    
-    if (hasUpvoted) {
-      transaction.update(docRef, {
-        upvotedBy: arrayRemove(userId),
-        upvotes: increment(-1)
-      });
-    } else {
-      transaction.update(docRef, {
-        upvotedBy: arrayUnion(userId),
-        upvotes: increment(1)
-      });
-    }
-  });
-};

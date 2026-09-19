@@ -1,4 +1,4 @@
-import type { Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord, PublicProgram } from '../types';
+import type { Exercise, WorkoutProgram, CompletedWorkout, WeightLog, PersonalRecord } from '../types';
 
 const CURATED_EXERCISES: Exercise[] = [
   // Göğüs (Chest)
@@ -899,17 +899,4 @@ export const savePersonalRecords = (prs: PersonalRecord[]): void => {
   localStorage.setItem('aurafit_personal_records', JSON.stringify(prs));
 };
 
-export const getPublicPrograms = (): PublicProgram[] => {
-  const data = localStorage.getItem('aurafit_public_programs');
-  if (!data) return [];
-  try {
-    return JSON.parse(data);
-  } catch {
-    localStorage.removeItem('aurafit_public_programs');
-    return [];
-  }
-};
 
-export const savePublicPrograms = (programs: PublicProgram[]): void => {
-  localStorage.setItem('aurafit_public_programs', JSON.stringify(programs));
-};

@@ -35,3 +35,6 @@ test-results/
 *.apk
 *.aab
 dist-electron/
+
+# Claude Code worktree/oturum artefaktları
+.claude/worktrees/

@@ -15,7 +15,10 @@
 
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  /* #64748b idi: bg-primary'de 4.16:1, kartlarda 3.89:1 — WCAG AA'nın (4.5:1)
+     altındaydı. #7d8da1 üç zeminde de geçiyor (5.84 / 5.47 / 5.00) ve
+     --text-secondary ile arasındaki hiyerarşiyi koruyor. */
+  --text-muted: #7d8da1;
 
   --accent-violet: #8b5cf6;
   --accent-violet-glow: rgba(139, 92, 246, 0.35);
@@ -26,6 +29,30 @@
   --accent-amber: #f59e0b;
   --accent-amber-glow: rgba(245, 158, 11, 0.35);
   --accent-pink: #ec4899;
+
+  /* Tehlike/silme eylemleri. Bileşenlerde #ef4444 ve #f87171 olarak elle
+     yazılıyordu; token olmadığı için tema değişiminde dışarıda kalıyorlardı. */
+  --accent-red: #ef4444;
+  --accent-red-strong: #dc2626;
+  --accent-red-text: #f87171;
+  --accent-red-bg: rgba(239, 68, 68, 0.15);
+  --accent-red-bg-soft: rgba(239, 68, 68, 0.2);
+  --accent-red-border: rgba(239, 68, 68, 0.3);
+
+  /* Kart üzerine bindirilen ince beyaz katmanlar. Aynı değerler farklı
+     yazımlarla (boşluklu/boşluksuz) altı ayrı varyanta dağılmıştı. */
+  --surface-1: rgba(255, 255, 255, 0.01);
+  --surface-2: rgba(255, 255, 255, 0.02);
+  --surface-3: rgba(255, 255, 255, 0.03);
+  --surface-4: rgba(255, 255, 255, 0.05);
+
+  /* Vurgu renklerinin şeffaf zemin/kenarlık tonları. */
+  --accent-cyan-bg: rgba(6, 182, 212, 0.05);
+  --accent-cyan-bg-soft: rgba(6, 182, 212, 0.15);
+  --accent-cyan-border: rgba(6, 182, 212, 0.2);
+  --accent-violet-bg: rgba(139, 92, 246, 0.06);
+  --accent-violet-border: rgba(139, 92, 246, 0.15);
+  --accent-amber-border: rgba(245, 158, 11, 0.3);
   
   --gradient-primary: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
   --gradient-cyan: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
@@ -62,7 +89,9 @@ body {
   color: var(--text-primary);
   font-family: var(--font-sans);
   min-height: 100vh;
-  overflow-x: hidden;
+  /* `clip`, `hidden` gibi yatay taşmayı keser ama kaydırma konteyneri
+     yaratmadığı için alt öğelerdeki position:sticky çalışmaya devam eder. */
+  overflow-x: clip;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -81,6 +110,40 @@ button, input, select, textarea {
 a {
   text-decoration: none;
   color: inherit;
+}
+
+/* Klavye odağı
+   ------------------------------------------------------------------
+   Daha önce yalnızca form alanlarının odak stili vardı; butonlar, nav
+   öğeleri ve kartlar klavyeyle gezilirken hiçbir iz bırakmıyordu. Masaüstü
+   (Electron) sürümünde bu uygulamayı klavyeyle kullanılamaz hale getiriyordu.
+   :focus-visible kullanıldığı için fare tıklamalarında halka görünmez. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent-violet);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Koyu zeminde mor halkayı ayırmak için ince bir dış kontur. */
+:where(button, a):focus-visible {
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.25);
+}
+
+/* Azaltılmış hareket
+   ------------------------------------------------------------------
+   Uygulamada sürekli dönen/nabız atan öğeler var (aktif antrenman ikonu,
+   pulse-border, yükleme parıltısı). Sistem ayarı "hareketi azalt" olan
+   kullanıcılarda bunlar durur; geçişler anlık hale gelir ama işlevsellik
+   korunur. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Scrollbar Customization */
@@ -460,7 +523,7 @@ a {
 /* Universal layout constraints to prevent mobile horizontal shifts */
 html, body {
   max-width: 100vw;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Ensure padding doesn't cause overflow on mobile containers */
@@ -470,7 +533,7 @@ html, body {
 
 @media (max-width: 768px) {
   .app-container {
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 }
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Trash2, Calendar, Clock, Award, ChevronDown, ChevronUp, Share2, X } from 'lucide-react';
+import { Trash2, Calendar, Clock, Award, ChevronDown, ChevronUp, Share2, X, FileText } from 'lucide-react';
 import type { CompletedWorkout } from '../types';
 
 interface HistoryProps {
@@ -102,12 +102,12 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
     <>
     <div className="history-page-container anim-slide-up">
       {/* Header */}
-      <header className="history-header">
-        <div>
-          <h1 className="history-title">Antrenman <span className="gradient-text">Geçmişim</span></h1>
-          <p className="history-subtitle">Tamamladığınız antrenmanların detaylı analizini ve istatistiklerini inceleyin. Bir antrenmanı paylaşmak için kartındaki <Share2 size={12} style={{ verticalAlign: 'middle' }} /> ikonunu kullanın.</p>
-        </div>
-      </header>
+      {/* Sayfa başlığı Profil sekmesinde gösteriliyor; burada tekrar edilmiyor. */}
+      <p className="history-subtitle">
+        Bir antrenmanı paylaşmak için kartındaki
+        <Share2 size={12} style={{ verticalAlign: 'middle', margin: '0 4px' }} aria-hidden="true" />
+        ikonunu kullanın.
+      </p>
 
       {/* History List */}
       <section className="history-list-section">
@@ -140,7 +140,7 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
                         <Calendar size={16} />
                         <span>{completedDate}</span>
                       </div>
-                      <h3 className="history-workout-name">{workout.programName}</h3>
+                      <h2 className="history-workout-name">{workout.programName}</h2>
                     </div>
 
                     <div className="card-right-stats">
@@ -176,10 +176,10 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
                   {/* Expanded Detail Panel */}
                   {isExpanded && (
                     <div className="history-expanded-details anim-slide-up" onClick={(e) => e.stopPropagation()}>
-                      <h4 className="detail-title">Antrenman Detayları</h4>
+                      <h3 className="detail-title">Antrenman Detayları</h3>
                       {workout.notes && (
-                        <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.15)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                          <span style={{ fontWeight: 700, color: 'var(--accent-violet)', marginRight: '6px' }}>📝 Not:</span>{workout.notes}
+                        <div style={{ background: 'var(--accent-violet-bg)', border: '1px solid var(--accent-violet-border)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                          <span style={{ fontWeight: 700, color: 'var(--accent-violet)', marginRight: '6px' }}><FileText size={12} aria-hidden="true" style={{ verticalAlign: '-1px', marginRight: 4 }} />Not:</span>{workout.notes}
                         </div>
                       )}
                       
@@ -308,12 +308,17 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
           gap: 16px;
         }
 
+        /* "50 dk" iki satira bolunuyordu: pill esnek bir satirda daralinca
+           metin sariyordu. */
         .stat-pill {
           display: flex;
           align-items: center;
           gap: 6px;
           padding: 6px 12px;
-          background: rgba(255, 255, 255, 0.02);
+          flex-shrink: 0;
+          white-space: nowrap;
+          font-variant-numeric: tabular-nums;
+          background: var(--surface-2);
           border: 1px solid var(--border-light);
           border-radius: var(--radius-full);
           font-size: 13px;
@@ -554,7 +559,7 @@ export const History: React.FC<HistoryProps> = ({ history, deleteHistoryItem }) 
             <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmDelete(null)}>İptal</button>
             <button
               className="btn btn-danger"
-              style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+              style={{ flex: 1, padding: 14, background: 'var(--accent-red-bg)', border: '1px solid var(--accent-red-border)', color: 'var(--accent-red-text)' }}
               onClick={doDelete}
             >
               Evet, sil

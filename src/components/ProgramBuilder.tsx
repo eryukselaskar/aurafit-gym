@@ -1,134 +1,15 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit2, ChevronLeft, Save, Sparkles, BookOpen, AlertCircle, PlusCircle, X, Play, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Edit2, ChevronLeft, Save, Sparkles, BookOpen, AlertCircle, X, Play, Check } from 'lucide-react';
 import type { WorkoutProgram, Exercise, WorkoutExercise, WorkoutSession } from '../types';
 import { DndContext, closestCenter } from '@dnd-kit/core';
 import type { DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, useSortable, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { formatRepTarget, validateRepRange } from '../utils/repTarget';
 import { createId } from '../utils/id';
+import { SortableExerciseCard } from './ProgramExerciseCard';
+import './ProgramBuilder.css';
 
 
-interface SortableExCardProps {
-  ex: WorkoutExercise;
-  exIdx: number;
-  onRemove: () => void;
-  onRestChange: (v: number) => void;
-  onMinRepsChange: (v: number | undefined) => void;
-  onMaxRepsChange: (v: number | undefined) => void;
-  onWeightChange: (v: number | undefined) => void;
-  onRirChange: (v: number | undefined) => void;
-  onNotesChange: (v: string) => void;
-  onSetChange: (setIdx: number, field: 'reps' | 'weight' | 'rir', value: number) => void;
-  onAddSet: () => void;
-  onRemoveSet: (setIdx: number) => void;
-}
-
-const SortableExerciseCard: React.FC<SortableExCardProps> = ({
-  ex, onRemove, onRestChange, onMinRepsChange, onMaxRepsChange, onWeightChange, onRirChange, onNotesChange, onSetChange, onAddSet, onRemoveSet
-}) => {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ex.id });
-  const style = { transform: CSS.Transform.toString(transform), transition };
-
-  return (
-    <div ref={setNodeRef} style={style} className={`builder-exercise-card glass-panel ${isDragging ? 'dragging' : ''}`}>
-      <div className="builder-card-top">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div
-            className="drag-handle"
-            style={{ cursor: 'grab', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', touchAction: 'none' }}
-            title="Sürükle ve Bırak"
-            {...attributes}
-            {...listeners}
-          >
-            <GripVertical size={18} />
-          </div>
-          <div>
-            <h4 className="builder-ex-name" style={{ margin: 0 }}>{ex.name}</h4>
-            <span className="badge badge-cyan" style={{ marginTop: '2px', display: 'inline-block' }}>{ex.category}</span>
-          </div>
-        </div>
-        <button onClick={onRemove} className="btn-remove-ex">
-          <Trash2 size={16} />
-        </button>
-      </div>
-
-      <div className="builder-card-settings" style={{ display: 'flex', gap: '15px', alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
-        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
-          <label className="form-label">Dinlenme (sn)</label>
-          <input type="number" min="10" max="300" step="10" value={ex.restTime}
-            onChange={(e) => onRestChange(parseInt(e.target.value) || 60)} className="form-input mini-input" />
-        </div>
-        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
-          <label className="form-label">Min Tekrar</label>
-          <input type="number" min="1" max="100" placeholder="Min" value={ex.minReps || ''}
-            onChange={(e) => onMinRepsChange(parseInt(e.target.value) || undefined)} className="form-input mini-input" style={{ width: '65px' }} />
-        </div>
-        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
-          <label className="form-label">Max Tekrar</label>
-          <input type="number" min="1" max="100" placeholder="Max" value={ex.maxReps || ''}
-            onChange={(e) => onMaxRepsChange(parseInt(e.target.value) || undefined)} className="form-input mini-input" style={{ width: '65px' }} />
-        </div>
-        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
-          <label className="form-label">Hedef Kilo (kg)</label>
-          <input type="number" min="0" max="500" step="0.5" placeholder="Kilo" value={ex.weight !== undefined ? ex.weight : ''}
-            onChange={(e) => onWeightChange(e.target.value !== '' ? parseFloat(e.target.value) : undefined)} className="form-input mini-input" style={{ width: '70px' }} />
-        </div>
-        <div className="form-group inline-group" style={{ flexShrink: 0 }}>
-          <label className="form-label">Hedef RIR</label>
-          <input type="number" min="0" max="10" placeholder="RIR" value={ex.rir !== undefined ? ex.rir : ''}
-            onChange={(e) => onRirChange(e.target.value !== '' ? parseInt(e.target.value) : undefined)} className="form-input mini-input" style={{ width: '65px' }} />
-        </div>
-        <div className="form-group inline-group" style={{ flexGrow: 1, display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <label className="form-label" style={{ whiteSpace: 'nowrap' }}>Koçun Notu</label>
-          <input type="text" placeholder="Örn: RIR 1 - duraksamalı tempo" value={ex.notes || ''}
-            onChange={(e) => onNotesChange(e.target.value)} className="form-input" style={{ flexGrow: 1, minWidth: '150px' }} />
-        </div>
-      </div>
-
-      <div className="builder-sets-list">
-        <div className="sets-header-labels">
-          <span>Set</span><span>Hedef Tekrar</span><span>Ağırlık (kg)</span><span>Hedef RIR</span><span></span>
-        </div>
-        {ex.sets.map((set, setIdx) => (
-          <div key={set.id} className="builder-set-row">
-            <span className="set-number-label">{setIdx + 1}</span>
-            {ex.minReps !== undefined && ex.maxReps !== undefined ? (
-              <span className="set-readonly-badge" title="Egzersiz seviyesinde Min-Max tekrar ayarlandığı için bu değer sabitlenmiştir.">
-                {formatRepTarget(ex, set)}
-              </span>
-            ) : (
-              <input type="number" min="1" max="100" value={set.reps}
-                onChange={(e) => onSetChange(setIdx, 'reps', parseInt(e.target.value) || 0)} className="form-input mini-input" />
-            )}
-            {ex.weight !== undefined ? (
-              <span className="set-readonly-badge" title="Egzersiz seviyesinde hedef ağırlık ayarlandığı için bu değer sabitlenmiştir.">
-                {ex.weight} kg
-              </span>
-            ) : (
-              <input type="number" min="0" max="500" step="0.5" value={set.weight}
-                onChange={(e) => onSetChange(setIdx, 'weight', parseFloat(e.target.value) || 0)} className="form-input mini-input" />
-            )}
-            {ex.rir !== undefined ? (
-              <span className="set-readonly-badge" title="Egzersiz seviyesinde hedef RIR ayarlandığı için bu değer sabitlenmiştir.">
-                RIR {ex.rir}
-              </span>
-            ) : (
-              <input type="number" min="0" max="10" placeholder="RIR" value={set.rir !== undefined ? set.rir : 2}
-                onChange={(e) => onSetChange(setIdx, 'rir', parseInt(e.target.value) || 0)} className="form-input mini-input" />
-            )}
-            <button onClick={() => onRemoveSet(setIdx)} disabled={ex.sets.length <= 1} className="btn-delete-set">
-              <X size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
-      <button onClick={onAddSet} className="btn-add-set-row">
-        <PlusCircle size={14} /> Set Ekle
-      </button>
-    </div>
-  );
-};
 
 // Egzersiz kütüphanesindeki filtrelerle aynı liste.
 const SELECTOR_CATEGORIES = ['All', 'Göğüs', 'Sırt', 'Bacak', 'Omuz', 'Kol', 'Karın', 'Kardiyo'];
@@ -161,6 +42,19 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
   const [programExercises, setProgramExercises] = useState<WorkoutExercise[]>([]);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Seçici bu oturumda hangi hareketleri ekledi: listede ✓ göstermek için.
+  const [justAddedIds, setJustAddedIds] = useState<string[]>([]);
+
+  const openExerciseSelector = () => {
+    setJustAddedIds([]);
+    setShowExerciseSelector(true);
+  };
+
+  const closeExerciseSelector = () => {
+    setShowExerciseSelector(false);
+    setSearchTerm('');
+    setJustAddedIds([]);
+  };
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [formError, setFormError] = useState('');
 
@@ -296,8 +190,9 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
     };
 
     updateExercises(list => [...list, newWorkoutExercise]);
-    setShowExerciseSelector(false);
-    setSearchTerm('');
+    // Seçici açık kalır ve arama korunur: bir günü kurarken arka arkaya birkaç
+    // hareket eklemek normaldir, her eklemede modalı kapatmak o akışı kırıyordu.
+    setJustAddedIds(prev => [...prev, exercise.id]);
   };
 
   // Split ve tek-seans programlar aynı egzersiz listesi mantığını paylaşır; tek fark
@@ -473,7 +368,13 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             </h1>
             <p className="builder-subtitle">Kişisel hedeflerinize uygun egzersiz, set ve süreleri belirleyin.</p>
           </div>
-          <button onClick={handleSave} className="btn btn-primary">
+          {/* Ad girilmeden kaydetmek zaten hata veriyordu; o hâldeyken butonu
+              ikincil göstermek ekrandaki tek birincil eylemi "Egzersiz Ekle"
+              bırakıyor ve boş formda yanlış yönlendirme yapmıyor. */}
+          <button
+            onClick={handleSave}
+            className={`btn ${programName.trim() ? 'btn-primary' : 'btn-secondary'}`}
+          >
             <Save size={18} /> Kaydet
           </button>
         </header>
@@ -488,7 +389,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
         <div className="builder-form-grid">
           {/* Main Info */}
           <section className="builder-info-card glass-panel">
-            <h3 className="section-title">Program Detayları</h3>
+            <h2 className="section-title">Program Detayları</h2>
             
             {!activeProgram ? (
               <div className="form-group">
@@ -533,10 +434,11 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             )}
 
             <div className="form-group">
-              <label className="form-label">Program Adı *</label>
+              <label className="form-label" htmlFor="program-name">Program Adı *</label>
               <input
+                id="program-name"
                 type="text"
-                placeholder="Örn: Push Günü (İtiş), Hipertrofi Rutini"
+                placeholder="Örn: Push Günü"
                 value={programName}
                 onChange={(e) => setProgramName(e.target.value)}
                 className="form-input"
@@ -544,9 +446,10 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
               />
             </div>
             <div className="form-group">
-              <label className="form-label">Açıklama</label>
+              <label className="form-label" htmlFor="program-desc">Açıklama</label>
               <textarea
-                placeholder="Bu programın odaklandığı bölgeleri veya özel notları yazın..."
+                id="program-desc"
+                placeholder="Odak bölgeler veya notlar (isteğe bağlı)"
                 value={programDesc}
                 onChange={(e) => setProgramDesc(e.target.value)}
                 className="form-textarea"
@@ -588,8 +491,9 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             {isBundleProgram && programSessions[activeSessionIndex] && (
               <div className="session-day-name-editor glass-panel" style={{ padding: '16px', display: 'flex', gap: '12px', alignItems: 'flex-end', marginBottom: '16px' }}>
                 <div className="form-group" style={{ marginBottom: 0, flex: 1 }}>
-                  <label className="form-label">Seçili Günün Başlığı</label>
+                  <label className="form-label" htmlFor="session-name">Seçili Günün Başlığı</label>
                   <input
+                    id="session-name"
                     type="text"
                     value={programSessions[activeSessionIndex].name}
                     onChange={(e) => handleSessionNameChange(e.target.value)}
@@ -602,7 +506,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                   onClick={() => handleRemoveSession(activeSessionIndex)}
                   disabled={programSessions.length <= 1}
                   className="btn btn-secondary btn-icon"
-                  style={{ padding: '10px', color: '#f87171' }}
+                  style={{ padding: '10px', color: 'var(--accent-red-text)' }}
                   title="Bu Günü Sil"
                 >
                   <Trash2 size={16} />
@@ -611,13 +515,13 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             )}
 
             <div className="section-header">
-              <h3 className="section-title">
+              <h2 className="section-title">
                 {isBundleProgram && programSessions[activeSessionIndex]
                   ? `${programSessions[activeSessionIndex].name.split(' — ')[0]} Egzersizleri`
                   : 'Egzersizler'
                 } ({activeExList.length})
-              </h3>
-              <button onClick={() => setShowExerciseSelector(true)} className="btn btn-outline btn-add-ex">
+              </h2>
+              <button onClick={() => openExerciseSelector()} className="btn btn-outline btn-add-ex">
                 <Plus size={16} /> Egzersiz Ekle
               </button>
             </div>
@@ -627,7 +531,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                 <div className="empty-builder-state glass-panel">
                   <BookOpen size={36} />
                   <p>Bu güne henüz hareket eklemediniz.</p>
-                  <button onClick={() => setShowExerciseSelector(true)} className="btn btn-secondary btn-sm">
+                  <button onClick={() => openExerciseSelector()} className="btn btn-secondary btn-sm">
                     Kütüphaneden Seç
                   </button>
                 </div>
@@ -664,8 +568,19 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
         <div className="modal-backdrop">
           <div className="modal-content glass-panel anim-slide-up selector-modal">
             <div className="modal-header">
-              <h2 className="modal-title">Egzersiz Seçin</h2>
-              <button onClick={() => setShowExerciseSelector(false)} className="modal-close-btn">
+              <div>
+                <h2 className="modal-title">Egzersiz Seçin</h2>
+                <p className="selector-subtitle">
+                  {justAddedIds.length > 0
+                    ? `${justAddedIds.length} hareket eklendi`
+                    : 'Birden fazla hareket seçebilirsiniz'}
+                </p>
+              </div>
+              <button
+                onClick={closeExerciseSelector}
+                className="modal-close-btn"
+                aria-label="Egzersiz seçimini kapat"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -692,23 +607,45 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
               ))}
             </div>
 
+            <p className="selector-result-count" aria-live="polite">
+              {filteredExercises.length} sonuç
+            </p>
+
             <div className="selector-list">
               {filteredExercises.length === 0 && (
                 <p className="selector-empty">Bu filtreye uyan egzersiz bulunamadı.</p>
               )}
-              {filteredExercises.map((ex) => (
-                <button
-                  key={ex.id}
-                  onClick={() => handleAddExerciseToProgram(ex)}
-                  className="selector-item"
-                >
-                  <div>
-                    <p className="selector-item-name">{ex.name}</p>
-                    <span className="badge badge-violet">{ex.category}</span>
-                  </div>
-                  <Plus size={16} className="selector-plus-icon" />
-                </button>
-              ))}
+              {filteredExercises.map((ex) => {
+                const addedCount = justAddedIds.filter(id => id === ex.id).length;
+                return (
+                  <button
+                    key={ex.id}
+                    onClick={() => handleAddExerciseToProgram(ex)}
+                    className={`selector-item ${addedCount > 0 ? 'added' : ''}`}
+                  >
+                    <div className="selector-item-text">
+                      <p className="selector-item-name">{ex.name}</p>
+                      {selectedCategory === 'All' && (
+                        <span className="badge badge-violet">{ex.category}</span>
+                      )}
+                    </div>
+                    {addedCount > 0 ? (
+                      <span className="selector-added-mark" aria-label={`${ex.name} eklendi`}>
+                        <Check size={16} />
+                        {addedCount > 1 && <span className="selector-added-count">{addedCount}</span>}
+                      </span>
+                    ) : (
+                      <Plus size={18} className="selector-plus-icon" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="selector-footer">
+              <button onClick={closeExerciseSelector} className="btn btn-primary selector-done-btn">
+                {justAddedIds.length > 0 ? `Bitti (${justAddedIds.length})` : 'Bitti'}
+              </button>
             </div>
           </div>
         </div>
@@ -728,7 +665,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
               <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmModal(null)}>Vazgeç</button>
               <button
                 className="btn btn-danger"
-                style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }}
+                style={{ flex: 1, padding: 14, background: 'var(--accent-red-bg)', border: '1px solid var(--accent-red-border)', color: 'var(--accent-red-text)' }}
                 onClick={confirmModal.onConfirm}
               >
                 Evet, çık
@@ -738,454 +675,6 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
         </div>
       )}
 
-      <style>{`
-          .builder-container {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-          }
-
-          .builder-header {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-          }
-
-          .header-titles {
-            flex: 1;
-          }
-
-          .builder-title {
-            font-size: 28px;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            margin-bottom: 4px;
-          }
-
-          .builder-subtitle {
-            color: var(--text-secondary);
-            font-size: 14px;
-          }
-
-          .builder-error {
-            margin-top: 10px;
-          }
-
-          .builder-form-grid {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 20px;
-            align-items: start;
-          }
-
-          .builder-info-card {
-            padding: 24px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-          }
-
-          .section-title {
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            letter-spacing: -0.01em;
-          }
-
-          .builder-exercises-section {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-          }
-
-          .builder-exercises-section .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          }
-
-          .builder-exercises-list {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-          }
-
-          .empty-builder-state {
-            padding: 50px;
-            text-align: center;
-            color: var(--text-secondary);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 14px;
-          }
-
-          .builder-exercise-card {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-            transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
-          }
-
-          .builder-exercise-card.dragging {
-            opacity: 0.45;
-            transform: scale(0.985);
-            border: 2px dashed var(--accent-violet) !important;
-            background: rgba(139, 92, 246, 0.05) !important;
-          }
-
-          .builder-card-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-          }
-
-          .builder-ex-name {
-            font-size: 17px;
-            font-weight: 700;
-            margin-bottom: 4px;
-          }
-
-          .btn-remove-ex {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 6px;
-            border-radius: var(--radius-sm);
-            transition: all var(--transition-fast);
-          }
-
-          .btn-remove-ex:hover {
-            color: #ef4444;
-            background: rgba(239, 68, 68, 0.1);
-          }
-
-          .builder-card-settings {
-            display: flex;
-            gap: 20px;
-            border-bottom: 1px solid var(--border-light);
-            padding-bottom: 14px;
-          }
-
-          .inline-group {
-            flex-direction: row;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 0;
-          }
-
-          .mini-input {
-            width: 70px;
-            padding: 6px 10px;
-            text-align: center;
-            font-size: 14px;
-          }
-
-          /* Sets editor formatting */
-          .builder-sets-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-          }
-
-          .sets-header-labels {
-            display: grid;
-            grid-template-columns: 40px 1fr 1fr 1fr 40px;
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            padding-left: 10px;
-            text-align: center;
-          }
-
-          .sets-header-labels span:nth-child(2),
-          .sets-header-labels span:nth-child(3),
-          .sets-header-labels span:nth-child(4) {
-            text-align: center;
-          }
-
-          .builder-set-row {
-            display: grid;
-            grid-template-columns: 40px 1fr 1fr 1fr 40px;
-            align-items: center;
-            gap: 10px;
-            background: rgba(255, 255, 255, 0.01);
-            padding: 4px 6px;
-            border-radius: var(--radius-sm);
-          }
-
-          .set-number-label {
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-align: center;
-          }
-
-          .builder-set-row .mini-input {
-            width: 100%;
-          }
-
-          .set-readonly-badge {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            height: 38px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px dashed var(--border-light);
-            border-radius: var(--radius-md);
-            color: var(--text-secondary);
-            font-size: 13px;
-            font-weight: 600;
-          }
-
-          .btn-delete-set {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all var(--transition-fast);
-          }
-
-          .btn-delete-set:hover:not(:disabled) {
-            color: #ef4444;
-            background: rgba(239, 68, 68, 0.1);
-          }
-
-          .btn-delete-set:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-          }
-
-          .btn-add-set-row {
-            background: transparent;
-            border: 1px dashed var(--border-medium);
-            color: var(--text-secondary);
-            font-weight: 600;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: var(--radius-sm);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            font-size: 13px;
-            transition: all var(--transition-fast);
-          }
-
-          .btn-add-set-row:hover {
-            color: var(--text-primary);
-            border-color: var(--accent-violet);
-            background: rgba(255, 255, 255, 0.02);
-          }
-
-          /* Modal styling */
-          .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(5, 6, 9, 0.8);
-            backdrop-filter: blur(8px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-            padding: 20px;
-          }
-
-          .modal-content {
-            width: 100%;
-            max-width: 480px;
-            background: var(--bg-card-solid);
-            border: 1px solid var(--border-medium);
-            border-radius: var(--radius-lg);
-            padding: 30px;
-            box-shadow: var(--shadow-lg);
-          }
-
-          .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-          }
-
-          .modal-title {
-            font-size: 22px;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-          }
-
-          .modal-close-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            transition: color var(--transition-fast);
-          }
-
-          .modal-close-btn:hover {
-            color: var(--text-primary);
-          }
-
-          /* Selector Modal specific */
-          .selector-modal {
-            max-width: 420px;
-          }
-
-          .selector-search {
-            margin-bottom: 12px;
-          }
-
-          .selector-filters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 16px;
-          }
-
-          .selector-empty {
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 13px;
-            padding: 24px 0;
-          }
-
-          .selector-list {
-            max-height: 300px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            padding-right: 4px;
-          }
-
-          .selector-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 14px;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-light);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: all var(--transition-fast);
-            text-align: left;
-          }
-
-          .selector-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: var(--border-medium);
-          }
-
-          .selector-item-name {
-            font-weight: 600;
-            margin-bottom: 2px;
-            font-size: 14px;
-          }
-
-          .selector-plus-icon {
-            color: var(--accent-violet);
-          }
-
-          @media (max-width: 900px) {
-            .builder-form-grid {
-              grid-template-columns: 1fr;
-            }
-          }
-
-          @media (max-width: 768px) {
-            .builder-card-settings {
-              flex-direction: column;
-              align-items: stretch !important;
-              gap: 12px;
-            }
-            .builder-card-settings .inline-group {
-              width: 100%;
-            }
-            .builder-card-settings .inline-group input {
-              flex: 1;
-              min-width: 0 !important;
-            }
-          }
-
-          @media (max-width: 600px) {
-            .builder-exercise-card {
-              padding: 14px 10px;
-            }
-            .sets-header-labels {
-              grid-template-columns: 30px 1fr 1fr 1fr 30px;
-              gap: 6px;
-              padding-left: 0;
-            }
-            .builder-set-row {
-              grid-template-columns: 30px 1fr 1fr 1fr 30px;
-              gap: 6px;
-              padding: 4px;
-            }
-            .builder-set-row .mini-input {
-              padding: 6px 4px;
-              font-size: 13px;
-              width: 100% !important;
-              min-width: 0 !important;
-            }
-            .set-readonly-badge {
-              height: 32px;
-              font-size: 12px;
-              border-radius: var(--radius-sm);
-            }
-            .set-number-label {
-              font-size: 13px;
-            }
-          }
-
-          @media (max-width: 480px) {
-            .builder-exercises-section .section-header {
-              flex-direction: column;
-              align-items: flex-start;
-              gap: 10px;
-            }
-            .builder-exercises-section .section-header .btn-add-ex {
-              width: 100%;
-            }
-          }
-
-          @media (max-width: 580px) {
-            .builder-header {
-              flex-wrap: wrap !important;
-              gap: 12px !important;
-            }
-            .builder-header .header-titles {
-              width: calc(100% - 60px) !important;
-              flex: none !important;
-            }
-            .builder-header .builder-actions, 
-            .builder-header .btn-primary {
-              width: 100% !important;
-              margin-top: 4px;
-            }
-            .builder-header .builder-actions button,
-            .builder-header .btn-primary {
-              flex: 1;
-              justify-content: center;
-            }
-            .builder-title {
-              font-size: 22px !important;
-            }
-          }
-        `}</style>
       </>
     );
   }
@@ -1231,7 +720,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                 onConfirm: () => { setConfirmModal(null); deleteProgram(selectedProgramDetail.id); setSelectedProgramDetail(null); }
               })}
               className="btn btn-secondary btn-delete"
-              style={{ color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.2)' }}
+              style={{ color: 'var(--accent-red-text)', borderColor: 'var(--accent-red-bg-soft)' }}
             >
               <Trash2 size={16} style={{ marginRight: '6px' }} /> Sil
             </button>
@@ -1255,21 +744,21 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
 
                 <div className="session-ex-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {sess.exercises.map((ex) => (
-                    <div key={ex.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}>
+                    <div key={ex.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--surface-1)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-primary)' }}>{ex.name}</span>
                         <span className="badge badge-violet" style={{ fontSize: '9px', padding: '1px 6px' }}>{ex.category}</span>
                       </div>
                       
                       {ex.notes && (
-                        <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', background: 'rgba(6, 182, 212, 0.05)', padding: '4px 8px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
+                        <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', background: 'var(--accent-cyan-bg)', padding: '4px 8px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
                           <strong>Not:</strong> {ex.notes}
                         </div>
                       )}
 
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px', alignItems: 'center' }}>
                         {ex.sets.map((set, sIdx) => (
-                          <div key={set.id} style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.03)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
+                          <div key={set.id} style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', background: 'var(--surface-3)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
                             S{sIdx + 1}: {formatRepTarget(ex, set)} tekrar x {set.weight}kg {set.rir !== undefined && `[RIR ${set.rir}]`}
                           </div>
                         ))}
@@ -1298,21 +787,21 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
 
             <div className="session-ex-list" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {selectedProgramDetail.exercises.map((ex) => (
-                <div key={ex.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}>
+                <div key={ex.id} style={{ display: 'flex', flexDirection: 'column', gap: '6px', padding: '10px', background: 'var(--surface-1)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: '700', fontSize: '14px', color: 'var(--text-primary)' }}>{ex.name}</span>
                     <span className="badge badge-violet" style={{ fontSize: '9px', padding: '1px 6px' }}>{ex.category}</span>
                   </div>
 
                   {ex.notes && (
-                    <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', background: 'rgba(6, 182, 212, 0.05)', padding: '4px 8px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', background: 'var(--accent-cyan-bg)', padding: '4px 8px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
                       <strong>Not:</strong> {ex.notes}
                     </div>
                   )}
 
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '2px', alignItems: 'center' }}>
                     {ex.sets.map((set, sIdx) => (
-                      <div key={set.id} style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.03)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
+                      <div key={set.id} style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-secondary)', background: 'var(--surface-3)', padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--border-light)' }}>
                         S{sIdx + 1}: {formatRepTarget(ex, set)} tekrar x {set.weight}kg {set.rir !== undefined && `[RIR ${set.rir}]`}
                       </div>
                     ))}
@@ -1339,7 +828,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmModal(null)}>İptal</button>
-              <button className="btn btn-danger" style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
+              <button className="btn btn-danger" style={{ flex: 1, padding: 14, background: 'var(--accent-red-bg)', border: '1px solid var(--accent-red-border)', color: 'var(--accent-red-text)' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
             </div>
           </div>
         </div>
@@ -1401,7 +890,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                 </div>
 
                 <div className="program-card-info">
-                  <h3 className="program-card-name">{program.name}</h3>
+                  <h2 className="program-card-name">{program.name}</h2>
                   <p className="program-card-desc">
                     {program.description || 'Bu program için henüz açıklama eklenmemiş.'}
                   </p>
@@ -1436,10 +925,18 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
                     Antrenmanı Başlat
                   </button>
                   <div className="card-minor-actions">
-                    <button onClick={() => handleEdit(program)} className="btn-card-action">
+                    <button
+                      onClick={() => handleEdit(program)}
+                      className="btn-card-action"
+                      aria-label={`${program.name} programını düzenle`}
+                    >
                       <Edit2 size={16} />
                     </button>
-                    <button onClick={() => deleteProgram(program.id)} className="btn-card-action btn-delete">
+                    <button
+                      onClick={() => deleteProgram(program.id)}
+                      className="btn-card-action btn-delete"
+                      aria-label={`${program.name} programını sil`}
+                    >
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -1450,200 +947,6 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
         )}
       </section>
 
-      <style>{`
-        .programs-list-container {
-          display: flex;
-          flex-direction: column;
-          gap: 30px;
-        }
-
-        .programs-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .programs-title {
-          font-size: 36px;
-          font-weight: 800;
-          letter-spacing: -0.04em;
-          margin-bottom: 6px;
-        }
-
-        .programs-subtitle {
-          color: var(--text-secondary);
-          font-size: 16px;
-        }
-
-        /* Programs Grid */
-        .programs-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 24px;
-        }
-
-        .program-card {
-          padding: 24px;
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          min-height: 300px;
-          height: 100%;
-        }
-
-        .program-card:hover {
-          transform: translateY(-4px);
-          box-shadow: var(--shadow-lg);
-          border-color: var(--border-medium);
-        }
-
-        .program-card-top-bar {
-          display: flex;
-          gap: 10px;
-          margin-bottom: 18px;
-        }
-
-        .program-card-info {
-          margin-bottom: 18px;
-          flex: 1;
-        }
-
-        .program-card-name {
-          font-size: 22px;
-          font-weight: 700;
-          letter-spacing: -0.02em;
-          margin-bottom: 6px;
-          line-height: 1.2;
-        }
-
-        .program-card-desc {
-          font-size: 13px;
-          color: var(--text-secondary);
-          line-height: 1.5;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-        }
-
-        /* Previews */
-        .program-card-preview-list {
-          background: rgba(255, 255, 255, 0.01);
-          border: 1px solid var(--border-light);
-          border-radius: var(--radius-md);
-          padding: 12px 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          margin-bottom: 24px;
-        }
-
-        .preview-item {
-          display: flex;
-          justify-content: space-between;
-          font-size: 13px;
-          font-weight: 600;
-        }
-
-        .preview-name {
-          color: var(--text-primary);
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          max-width: 180px;
-        }
-
-        .preview-detail {
-          color: var(--text-secondary);
-        }
-
-        .preview-more {
-          font-size: 11px;
-          font-weight: 700;
-          color: var(--accent-violet);
-          text-transform: uppercase;
-          letter-spacing: 0.02em;
-        }
-
-        /* Actions */
-        .program-card-actions {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
-
-        .btn-run-now {
-          flex: 1;
-          padding: 10px 16px;
-          font-size: 14px;
-        }
-
-        .card-minor-actions {
-          display: flex;
-          gap: 6px;
-        }
-
-        .btn-card-action {
-          width: 38px;
-          height: 38px;
-          border-radius: var(--radius-md);
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-light);
-          color: var(--text-secondary);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: all var(--transition-fast);
-        }
-
-        .btn-card-action:hover {
-          background: rgba(255, 255, 255, 0.06);
-          color: var(--text-primary);
-          border-color: var(--border-medium);
-        }
-
-        .btn-card-action.btn-delete:hover {
-          background: rgba(239, 68, 68, 0.1);
-          color: #f87171;
-          border-color: rgba(239, 68, 68, 0.2);
-        }
-
-        .empty-programs-prompt {
-          grid-column: 1 / -1;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          padding: 80px 40px;
-          gap: 20px;
-          text-align: center;
-          color: var(--text-secondary);
-        }
-
-        .sparkles-prompt {
-          color: var(--accent-violet);
-          filter: drop-shadow(0 0 10px var(--accent-violet-glow));
-        }
-
-        .empty-programs-prompt h2 {
-          color: var(--text-primary);
-          font-size: 24px;
-        }
-
-        @media (max-width: 640px) {
-          .programs-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 15px;
-          }
-          .programs-header .btn {
-            width: 100%;
-          }
-        }
-      `}</style>
 
       {confirmModal && (
         <div className="pb-modal-backdrop" onClick={() => setConfirmModal(null)}>
@@ -1657,7 +960,7 @@ export const ProgramBuilder: React.FC<ProgramBuilderProps> = ({
             </div>
             <div style={{ display: 'flex', gap: 12 }}>
               <button className="btn btn-secondary" style={{ flex: 1, padding: 14 }} onClick={() => setConfirmModal(null)}>İptal</button>
-              <button className="btn btn-danger" style={{ flex: 1, padding: 14, background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', color: '#f87171' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
+              <button className="btn btn-danger" style={{ flex: 1, padding: 14, background: 'var(--accent-red-bg)', border: '1px solid var(--accent-red-border)', color: 'var(--accent-red-text)' }} onClick={confirmModal.onConfirm}>Evet, devam et</button>
             </div>
           </div>
         </div>

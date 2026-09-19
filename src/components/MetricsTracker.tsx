@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Calendar, TrendingUp, ChevronUp, Activity, Flame, Calculator } from 'lucide-react';
+import { Plus, Trash2, Calendar, TrendingUp, ChevronUp, Calculator } from 'lucide-react';
 import type { WeightLog } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
+import { HealthCalculators } from './HealthCalculators';
+import './MetricsTracker.css';
 
 interface MetricsTrackerProps {
   weightLogs: WeightLog[];
@@ -48,6 +51,9 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
   deleteWeightLog
 }) => {
   const [activeMetric, setActiveMetric] = useState<MetricType>('weight');
+  // window.confirm / alert yerine uygulama içi pencere.
+  const [logToDelete, setLogToDelete] = useState<string | null>(null);
+  const [formAlert, setFormAlert] = useState<string | null>(null);
   
   // Form states
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -84,7 +90,7 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!weight || parseFloat(weight) <= 0) {
-      alert('Lütfen geçerli bir kilo girin.');
+      setFormAlert('Lütfen geçerli bir kilo girin.');
       return;
     }
 
@@ -261,10 +267,8 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
     <div className="metrics-container anim-slide-up">
       {/* Header */}
       <header className="metrics-header">
-        <div>
-          <h1 className="metrics-title">Vücut <span className="cyan-gradient-text">Ölçülerim</span></h1>
-          <p className="metrics-subtitle">Kilonuzu, yağ oranınızı ve bölgesel ölçülerinizi düzenli kaydederek gelişimi izleyin.</p>
-        </div>
+        {/* Sayfa başlığı Profil sekmesinde zaten gösteriliyor; burada tekrar
+            etmek içeriğe gelmeden ~350px yer harcıyordu. */}
         <button 
           onClick={() => setIsFormExpanded(!isFormExpanded)} 
           className="btn btn-primary"
@@ -380,7 +384,7 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
 
             {/* Auto-Calculated Body Fat Display */}
             {bodyFat && (
-              <div className="form-calculated-info" style={{ marginTop: '4px', fontSize: '13px', color: 'var(--accent-cyan)', background: 'rgba(6, 182, 212, 0.05)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px dashed rgba(6, 182, 212, 0.2)', textAlign: 'left' }}>
+              <div className="form-calculated-info" style={{ marginTop: '4px', fontSize: '13px', color: 'var(--accent-cyan)', background: 'var(--accent-cyan-bg)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--accent-cyan-border)', textAlign: 'left' }}>
                 Otomatik Hesaplanan Yağ Oranı: <strong>%{bodyFat}</strong> (YMCA Yöntemi ile Kilo ve Bel ölçümünüze göre)
               </div>
             )}
@@ -411,7 +415,6 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
                 onClick={() => setActiveMetric(type)}
                 className={`metric-tab-btn ${activeMetric === type ? 'active' : ''}`}
               >
-                <Activity size={16} />
                 <span>{getMetricHeaderLabel(type)}</span>
               </button>
             ))}
@@ -432,8 +435,8 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
         <button
           type="button"
           onClick={() => setIsCalcExpanded(!isCalcExpanded)}
-          className={`btn ${isCalcExpanded ? 'btn-secondary' : 'btn-primary'}`}
-          style={{ width: '100%', gap: '10px', padding: '14px', borderRadius: 'var(--radius-md)' }}
+          className="btn btn-secondary metrics-calc-toggle"
+          aria-expanded={isCalcExpanded}
         >
           <Calculator size={18} />
           {isCalcExpanded ? 'Hesaplayıcıları Gizle' : 'Sağlık Hesaplayıcıları (VKİ, Kalori)'}
@@ -441,172 +444,29 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
       </div>
 
       {isCalcExpanded && (
-        <section className="metrics-side-panel glass-panel anim-slide-up">
-          <div className="panel-tabs">
-            <button 
-              onClick={() => setCalcTab('bmi')} 
-              className={`panel-tab-btn ${calcTab === 'bmi' ? 'active' : ''}`}
-            >
-              <Calculator size={14} />
-              Vücut Kitle İndeksi (VKİ)
-            </button>
-            <button 
-              onClick={() => setCalcTab('tdee')} 
-              className={`panel-tab-btn ${calcTab === 'tdee' ? 'active' : ''}`}
-            >
-              <Flame size={14} />
-              Günlük Kalori (TDEE)
-            </button>
-          </div>
-
-          <div className="panel-content">
-            {calcTab === 'bmi' && (
-              <div className="calculator-view anim-slide-up">
-                <h4>Vücut Kitle İndeksi (VKİ)</h4>
-                
-                <div className="calc-inputs-row">
-                  <div className="calc-input-group">
-                    <label>Boy (cm)</label>
-                    <input 
-                      type="number" 
-                      value={userHeight} 
-                      onChange={(e) => setUserHeight(e.target.value)} 
-                      className="calc-input"
-                    />
-                  </div>
-                  <div className="calc-input-group">
-                    <label>Ağırlık (kg)</label>
-                    <input 
-                      type="number" 
-                      value={calcWeight} 
-                      onChange={(e) => setCalcWeight(e.target.value)} 
-                      className="calc-input"
-                    />
-                  </div>
-                </div>
-
-                {bmi > 0 ? (
-                  <div className="calc-result-box">
-                    <div className="result-main-value">
-                      <span className="result-number">{bmi.toFixed(1)}</span>
-                      <span className="result-label">kg/m²</span>
-                    </div>
-                    <div className="result-status" style={{ color: bmiCat.color }}>
-                      {bmiCat.label}
-                    </div>
-                    
-                    {/* Gauge range bar */}
-                    <div className="bmi-gauge-bar">
-                      <div 
-                        className="bmi-indicator-dot" 
-                        style={{ left: `${Math.min(100, Math.max(0, ((bmi - 15) / 25) * 100))}%` }}
-                      ></div>
-                    </div>
-                    <div className="bmi-gauge-labels">
-                      <span>15</span>
-                      <span>18.5</span>
-                      <span>25</span>
-                      <span>30</span>
-                      <span>40</span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="calc-notice">Lütfen boy ve kilo değerlerini girin.</p>
-                )}
-              </div>
-            )}
-
-            {calcTab === 'tdee' && (
-              <div className="calculator-view anim-slide-up">
-                <h4>Günlük Kalori İhtiyacı (TDEE)</h4>
-                
-                <div className="calc-inputs-grid">
-                  <div className="calc-input-group">
-                    <label>Cinsiyet</label>
-                    <select 
-                      value={userGender} 
-                      onChange={(e) => setUserGender(e.target.value as 'male' | 'female')}
-                      className="calc-input select"
-                    >
-                      <option value="male">Erkek</option>
-                      <option value="female">Kadın</option>
-                    </select>
-                  </div>
-                  <div className="calc-input-group">
-                    <label>Yaş</label>
-                    <input 
-                      type="number" 
-                      value={userAge} 
-                      onChange={(e) => setUserAge(e.target.value)} 
-                      className="calc-input"
-                    />
-                  </div>
-                  <div className="calc-input-group">
-                    <label>Boy (cm)</label>
-                    <input 
-                      type="number" 
-                      value={userHeight} 
-                      onChange={(e) => setUserHeight(e.target.value)} 
-                      className="calc-input"
-                    />
-                  </div>
-                  <div className="calc-input-group">
-                    <label>Kilo (kg)</label>
-                    <input 
-                      type="number" 
-                      value={calcWeight} 
-                      onChange={(e) => setCalcWeight(e.target.value)} 
-                      className="calc-input"
-                    />
-                  </div>
-                </div>
-
-                <div className="calc-input-group full-width">
-                  <label>Aktivite Seviyesi</label>
-                  <select 
-                    value={activityLevel} 
-                    onChange={(e) => setActivityLevel(e.target.value)}
-                    className="calc-input select"
-                  >
-                    <option value="1.2">Sedanter (Hareketsiz yaşam)</option>
-                    <option value="1.375">Hafif Aktif (Haftada 1-3 gün spor)</option>
-                    <option value="1.55">Orta Aktif (Haftada 3-5 gün spor)</option>
-                    <option value="1.725">Çok Aktif (Haftada 6-7 gün ağır spor)</option>
-                    <option value="1.9">Ekstra Aktif (Ağır spor + fiziksel iş)</option>
-                  </select>
-                </div>
-
-                {bmr > 0 ? (
-                  <div className="calc-result-box calorie-results">
-                    <div className="calorie-metric">
-                      <span className="calorie-lbl">BMR (Bazal Metabolizma):</span>
-                      <span className="calorie-val font-accent-cyan">{Math.round(bmr)} kcal</span>
-                    </div>
-                    <div className="calorie-metric main-tdee border-top">
-                      <span className="calorie-lbl">TDEE (Kilo Koruma):</span>
-                      <span className="calorie-val font-accent-violet">{Math.round(tdee)} kcal</span>
-                    </div>
-                    <div className="calorie-metric">
-                      <span className="calorie-lbl">Kilo Verme (Yağ Yakımı):</span>
-                      <span className="calorie-val font-accent-mint">{Math.round(tdee - 500)} kcal</span>
-                    </div>
-                    <div className="calorie-metric">
-                      <span className="calorie-lbl">Kilo Alma (Bulking):</span>
-                      <span className="calorie-val font-accent-amber">{Math.round(tdee + 300)} kcal</span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="calc-notice">Lütfen gerekli değerleri eksiksiz doldurun.</p>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
+        <HealthCalculators
+          calcTab={calcTab}
+          setCalcTab={setCalcTab}
+          userGender={userGender}
+          setUserGender={setUserGender}
+          userHeight={userHeight}
+          setUserHeight={setUserHeight}
+          userAge={userAge}
+          setUserAge={setUserAge}
+          calcWeight={calcWeight}
+          setCalcWeight={setCalcWeight}
+          activityLevel={activityLevel}
+          setActivityLevel={setActivityLevel}
+          bmi={bmi}
+          bmiCat={bmiCat}
+          bmr={bmr}
+          tdee={tdee}
+        />
       )}
 
       {/* History logs table */}
       <section className="metrics-history glass-panel">
-        <h3 className="section-title">Geçmiş Ölçüm Kayıtları</h3>
+        <h2 className="section-title">Geçmiş Ölçüm Kayıtları</h2>
 
         <div className="metrics-logs-list">
           {weightLogs.length === 0 ? (
@@ -640,9 +500,7 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
                     <span className="log-val">{log.thigh ? `${log.thigh} cm` : '-'}</span>
                     <button 
                       onClick={() => {
-                        if (window.confirm('Bu ölçüm kaydını silmek istediğinizden emin misiniz?')) {
-                          deleteWeightLog(log.id);
-                        }
+                        setLogToDelete(log.id);
                       }} 
                       className="btn-delete-log"
                     >
@@ -659,9 +517,7 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
                       </span>
                       <button 
                         onClick={() => {
-                          if (window.confirm('Bu ölçüm kaydını silmek istediğinizden emin misiniz?')) {
-                            deleteWeightLog(log.id);
-                          }
+                        setLogToDelete(log.id);
                         }} 
                         className="btn-delete-log-mobile"
                       >
@@ -703,669 +559,28 @@ export const MetricsTracker: React.FC<MetricsTrackerProps> = ({
         </div>
       </section>
 
-      <style>{`
-        .metrics-container {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
 
-        .metrics-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .metrics-title {
-          font-size: 36px;
-          font-weight: 800;
-          letter-spacing: -0.04em;
-          margin-bottom: 6px;
-        }
-
-        .metrics-subtitle {
-          color: var(--text-secondary);
-          font-size: 16px;
-        }
-
-        /* Form styling */
-        .metrics-form-card {
-          padding: 24px;
-        }
-
-        .metrics-form {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .form-row {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-          gap: 16px;
-        }
-
-        .form-row.border-top {
-          border-top: 1px solid var(--border-light);
-          padding-top: 20px;
-        }
-
-        .form-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: 12px;
-        }
-
-        /* Analytics Grid layout */
-        .metrics-analytics-layout {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .metrics-dashboard {
-          display: grid;
-          grid-template-columns: 180px 1fr;
-          min-height: 280px;
-          padding: 20px;
-          gap: 20px;
-        }
-
-        .metrics-selector-tabs {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          border-right: 1px solid var(--border-light);
-          padding-right: 12px;
-        }
-
-        .metric-tab-btn {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px 16px;
-          border-radius: var(--radius-md);
-          background: transparent;
-          border: 1px solid transparent;
-          color: var(--text-secondary);
-          cursor: pointer;
-          font-weight: 600;
-          font-family: var(--font-headings);
-          transition: all var(--transition-fast);
-          text-align: left;
-        }
-
-        .metric-tab-btn:hover {
-          color: var(--text-primary);
-          background: rgba(255, 255, 255, 0.02);
-        }
-
-        .metric-tab-btn.active {
-          color: #fff;
-          background: rgba(6, 182, 212, 0.1);
-          border-color: rgba(6, 182, 212, 0.25);
-          box-shadow: 0 0 15px rgba(6, 182, 212, 0.1);
-        }
-
-        .metric-tab-btn.active svg {
-          color: var(--accent-cyan);
-        }
-
-        /* Chart container & Quick guide styles */
-        .chart-container-area {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-          flex: 1;
-        }
-
-        .chart-canvas {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex: 1;
-          min-height: 180px;
-        }
-
-        .quick-guide-line {
-          display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          padding: 12px 16px;
-          background: rgba(6, 182, 212, 0.04);
-          border: 1px solid rgba(6, 182, 212, 0.15);
-          border-radius: var(--radius-md);
-          font-size: 13px;
-          line-height: 1.55;
-          color: var(--text-secondary);
-        }
-
-        .quick-guide-icon {
-          color: var(--accent-cyan);
-          margin-top: 2px;
-          flex-shrink: 0;
-        }
-
-        .quick-guide-text {
-          margin: 0;
-        }
-
-        .quick-guide-tip {
-          display: inline;
-          color: var(--text-muted);
-          margin-left: 6px;
-        }
-
-        /* Side Panel Calculators (Stacked layout when expanded) */
-        .metrics-side-panel {
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-          min-height: 300px;
-        }
-
-        .panel-tabs {
-          display: flex;
-          gap: 6px;
-          border-bottom: 1px solid var(--border-light);
-          padding-bottom: 10px;
-        }
-
-        .panel-tab-btn {
-          flex: 1;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          background: transparent;
-          border: none;
-          color: var(--text-secondary);
-          padding: 10px 4px;
-          font-size: 13px;
-          font-weight: 700;
-          border-radius: var(--radius-sm);
-          cursor: pointer;
-          transition: all var(--transition-fast);
-        }
-
-        .panel-tab-btn:hover {
-          color: var(--text-primary);
-          background: rgba(255, 255, 255, 0.02);
-        }
-
-        .panel-tab-btn.active {
-          color: #fff;
-          background: var(--gradient-primary);
-          box-shadow: 0 4px 10px rgba(139, 92, 246, 0.2);
-        }
-
-        .panel-content {
-          flex: 1;
-        }
-
-        /* Calculator View Formatting */
-        .calculator-view {
-          display: flex;
-          flex-direction: column;
-          gap: 16px;
-        }
-
-        .calculator-view h4 {
-          font-size: 16px;
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-
-        .calc-inputs-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-        }
-
-        .calc-inputs-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-          gap: 12px;
-        }
-
-        .calc-input-group {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        .calc-input-group.full-width {
-          grid-column: 1 / -1;
-        }
-
-        .calc-input-group label {
-          font-size: 11px;
-          font-weight: 700;
-          color: var(--text-muted);
-        }
-
-        .calc-input {
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-light);
-          border-radius: var(--radius-sm);
-          padding: 8px 12px;
-          font-size: 13px;
-          color: var(--text-primary);
-          width: 100%;
-          outline: none;
-          transition: all var(--transition-fast);
-        }
-
-        .calc-input:focus {
-          border-color: var(--border-focus);
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .calc-input.select {
-          cursor: pointer;
-        }
-
-        .calc-input.select option {
-          background: var(--bg-card-solid);
-          color: var(--text-primary);
-        }
-
-        .calc-result-box {
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid var(--border-light);
-          border-radius: var(--radius-md);
-          padding: 16px;
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .result-main-value {
-          display: flex;
-          align-items: baseline;
-          gap: 4px;
-        }
-
-        .result-number {
-          font-size: 32px;
-          font-weight: 800;
-          color: var(--text-primary);
-          font-family: var(--font-headings);
-        }
-
-        .result-label {
-          font-size: 13px;
-          color: var(--text-muted);
-          font-weight: 600;
-        }
-
-        .result-status {
-          font-size: 14px;
-          font-weight: 700;
-          margin-top: 2px;
-        }
-
-        .bmi-gauge-bar {
-          width: 100%;
-          height: 6px;
-          border-radius: 3px;
-          background: linear-gradient(to right, #3b82f6 0%, #10b981 35%, #f59e0b 65%, #ef4444 100%);
-          margin-top: 15px;
-          position: relative;
-        }
-
-        .bmi-indicator-dot {
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          background: #fff;
-          border: 2px solid var(--bg-primary);
-          position: absolute;
-          top: -3px;
-          transform: translateX(-50%);
-          box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-          transition: left var(--transition-normal);
-        }
-
-        .bmi-gauge-labels {
-          display: flex;
-          justify-content: space-between;
-          width: 100%;
-          font-size: 9px;
-          color: var(--text-muted);
-          margin-top: 6px;
-          font-weight: 700;
-        }
-
-        .calorie-results {
-          align-items: stretch;
-          text-align: left;
-          gap: 10px;
-        }
-
-        .calorie-metric {
-          display: flex;
-          justify-content: space-between;
-          font-size: 12px;
-        }
-
-        .calorie-lbl {
-          color: var(--text-secondary);
-          font-weight: 600;
-        }
-
-        .calorie-val {
-          font-weight: 700;
-        }
-
-        .calorie-metric.main-tdee {
-          font-size: 14px;
-          padding-top: 8px;
-        }
-
-        .calorie-metric.border-top {
-          border-top: 1px solid var(--border-light);
-        }
-
-        .font-accent-cyan { color: var(--accent-cyan); }
-        .font-accent-violet { color: var(--accent-violet); }
-        .font-accent-mint { color: var(--accent-mint); }
-        .font-accent-amber { color: var(--accent-amber); }
-
-        .calc-notice {
-          font-size: 11px;
-          color: var(--text-muted);
-          text-align: center;
-          padding: 20px 0;
-          line-height: 1.5;
-        }
-
-        /* SVG Trend Chart formatting */
-        .metrics-chart-wrapper {
-          width: 100%;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .chart-title-lbl {
-          font-size: 14px;
-          font-weight: 700;
-          text-transform: uppercase;
-          color: var(--text-muted);
-          letter-spacing: 0.05em;
-        }
-
-        .metrics-svg-chart {
-          width: 100%;
-          max-height: 200px;
-          overflow: visible;
-        }
-
-        .metrics-dot {
-          transition: all var(--transition-fast);
-          cursor: pointer;
-        }
-
-        .metrics-dot-group:hover .metrics-dot {
-          r: 7px;
-          fill: var(--accent-cyan);
-          stroke: #fff;
-        }
-
-        .metrics-dot-group:hover .chart-tooltip-text {
-          opacity: 1;
-        }
-
-        .empty-metrics-chart {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-          color: var(--text-muted);
-          text-align: center;
-          padding: 40px;
-        }
-
-        .empty-icon {
-          color: var(--border-medium);
-        }
-
-        /* History log table styling */
-        .metrics-history {
-          padding: 24px;
-        }
-
-        .metrics-history .section-title {
-          margin-bottom: 20px;
-        }
-
-        .metrics-logs-list {
-          overflow-x: auto;
-        }
-
-        .logs-table {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          min-width: 700px;
-        }
-
-        .table-header-row, .table-data-row {
-          display: grid;
-          grid-template-columns: 1.5fr repeat(6, 1fr) 50px;
-          padding: 12px 16px;
-          align-items: center;
-          border-radius: var(--radius-sm);
-        }
-
-        .table-header-row {
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid var(--border-light);
-          font-size: 11px;
-          font-weight: 800;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          text-align: center;
-        }
-
-        .table-header-row span:first-child {
-          text-align: left;
-        }
-
-        .table-data-row {
-          border: 1px solid var(--border-light);
-          background: rgba(255, 255, 255, 0.01);
-          text-align: center;
-          transition: all var(--transition-fast);
-        }
-
-        .table-data-row:hover {
-          background: rgba(255, 255, 255, 0.03);
-          border-color: var(--border-medium);
-        }
-
-        .log-date-lbl {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 13px;
-          font-weight: 700;
-          color: var(--text-secondary);
-          text-align: left !important;
-        }
-
-        .log-val {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-
-        .btn-delete-log {
-          background: transparent;
-          border: none;
-          color: var(--text-muted);
-          cursor: pointer;
-          padding: 6px;
-          border-radius: 4px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all var(--transition-fast);
-        }
-
-        .btn-delete-log:hover {
-          color: #ef4444;
-          background: rgba(239, 68, 68, 0.1);
-        }
-
-        .no-logs-msg {
-          color: var(--text-muted);
-          text-align: center;
-          padding: 30px;
-        }
-
-        /* Anim Utilities */
-        .anim-slide-up {
-          animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        @keyframes slideUp {
-          from { transform: translateY(12px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-
-        .mobile-metric-card {
-          padding: 16px;
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-          background: rgba(255, 255, 255, 0.015);
-          border: 1px solid var(--border-light);
-          border-radius: var(--radius-md);
-          text-align: left;
-        }
-
-        .card-top-info {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-          padding-bottom: 8px;
-        }
-
-        .card-date-lbl {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          font-size: 13px;
-          font-weight: 700;
-          color: var(--text-secondary);
-        }
-
-        .btn-delete-log-mobile {
-          background: transparent;
-          border: none;
-          color: var(--text-muted);
-          cursor: pointer;
-          padding: 6px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: all var(--transition-fast);
-        }
-
-        .btn-delete-log-mobile:hover {
-          color: #ef4444;
-          background: rgba(239, 68, 68, 0.1);
-          border-radius: 4px;
-        }
-
-        .card-metrics-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-        }
-
-        .metric-box {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-          background: rgba(255, 255, 255, 0.01);
-          padding: 10px 8px;
-          border-radius: var(--radius-sm);
-          border: 1px solid var(--border-light);
-          text-align: left;
-        }
-
-        .box-lbl {
-          font-size: 9px;
-          color: var(--text-muted);
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-        }
-
-        .box-val {
-          font-size: 13px;
-          font-weight: 800;
-          color: var(--text-primary);
-        }
-
-        .box-val.highlight-cyan {
-          color: var(--accent-cyan);
-        }
-
-        .box-val.highlight-pink {
-          color: var(--accent-pink);
-        }
-
-        @media (max-width: 768px) {
-          .metrics-dashboard {
-            grid-template-columns: 1fr;
-          }
-          .metrics-selector-tabs {
-            flex-direction: row;
-            flex-wrap: wrap;
-            border-right: none;
-            border-bottom: 1px solid var(--border-light);
-            padding-right: 0;
-            padding-bottom: 12px;
-          }
-          .metric-tab-btn {
-            flex: 1;
-            min-width: 90px;
-            justify-content: center;
-          }
-          .metrics-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 15px;
-          }
-          .metrics-header .btn {
-            width: 100%;
-          }
-          .metrics-logs-list {
-            overflow-x: visible;
-          }
-          .logs-table {
-            min-width: 0 !important;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-          }
-        }
-
-        @media (max-width: 480px) {
-          .card-metrics-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-        }
-      `}</style>
+      <ConfirmDialog
+        open={logToDelete !== null}
+        destructive
+        title="Ölçüm kaydını sil"
+        message="Bu ölçüm kaydı kalıcı olarak silinecek. Devam etmek istiyor musunuz?"
+        confirmLabel="Sil"
+        onConfirm={() => {
+          if (logToDelete) deleteWeightLog(logToDelete);
+          setLogToDelete(null);
+        }}
+        onCancel={() => setLogToDelete(null)}
+      />
+
+      <ConfirmDialog
+        open={formAlert !== null}
+        alertOnly
+        title="Eksik bilgi"
+        message={formAlert ?? ''}
+        onConfirm={() => setFormAlert(null)}
+        onCancel={() => setFormAlert(null)}
+      />
     </div>
   );
 };

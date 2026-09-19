@@ -61,7 +61,7 @@ export interface CompletedWorkout {
   notes?: string; // Antrenman sonu notu
 }
 
-export type ActiveTab = 'dashboard' | 'programs' | 'active' | 'history' | 'exercises' | 'explore' | 'metrics' | 'profile';
+export type ActiveTab = 'dashboard' | 'programs' | 'active' | 'history' | 'exercises' | 'metrics' | 'profile';
 
 export interface WeightLog {
   id: string;
@@ -83,16 +83,3 @@ export interface PersonalRecord {
   date: string;
 }
 
-export interface PublicProgram {
-  id: string;
-  originalProgramId: string;
-  name: string;
-  description?: string;
-  exercises: WorkoutExercise[];
-  sessions?: WorkoutSession[]; // Support multi-day splits in shared hub
-  creatorId: string;
-  creatorName: string;
-  upvotes: number;
-  upvotedBy: string[]; // List of user UIDs who upvoted
-  createdAt: string;
-}

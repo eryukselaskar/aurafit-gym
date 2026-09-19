@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Dumbbell, FastForward, Check, X, Clock, Bell, Plus, ArrowRight, Play, Pause } from 'lucide-react';
+import { Check, X, Clock, Plus, ArrowRight, Play, Pause, FileText, Trophy } from 'lucide-react';
 import type { WorkoutProgram, WorkoutExercise, CompletedWorkout, WorkoutSet, PersonalRecord } from '../types';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { formatRepTarget } from '../utils/repTarget';
+import { resolveSetTarget } from '../utils/repTarget';
 import { calculatePersonalRecords } from '../utils/personalRecords';
+import { RestTimerPanel } from './RestTimerPanel';
 import { now } from '../utils/id';
+import './ActiveWorkout.css';
 import {
   startWorkoutService,
   stopWorkoutService,
@@ -830,8 +832,8 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
             onClick={toggleTimer}
             className={`btn-timer-toggle ${isTimerRunning ? 'running' : 'paused'}`}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'var(--surface-4)',
+              border: '1px solid var(--border-medium)',
               borderRadius: '50%',
               width: '28px',
               height: '28px',
@@ -878,7 +880,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   {renderSparkline(ex.exerciseId)}
                 </div>
                 {ex.notes && (
-                  <div className="exercise-coach-note" style={{ marginTop: '6px', fontSize: '12px', color: 'var(--accent-cyan)', fontStyle: 'italic', background: 'rgba(6, 182, 212, 0.05)', padding: '6px 10px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
+                  <div className="exercise-coach-note" style={{ marginTop: '6px', fontSize: '12px', color: 'var(--accent-cyan)', fontStyle: 'italic', background: 'var(--accent-cyan-bg)', padding: '6px 10px', borderRadius: '4px', borderLeft: '2px solid var(--accent-cyan)' }}>
                     <strong>Not:</strong> {ex.notes}
                   </div>
                 )}
@@ -901,13 +903,15 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   const lastHint = lastSet
                     ? `${lastSet.actualWeight ?? lastSet.weight}kg × ${lastSet.actualReps ?? lastSet.reps}`
                     : null;
+                  // Hareket seviyesi hedefleri set seviyesini geçersiz kılar.
+                  const target = resolveSetTarget(ex, set);
                   return (
                   <React.Fragment key={set.id}>
                     {/* Desktop Layout Row */}
                     <div className={`active-table-row data desktop-only ${set.completed ? 'set-done' : ''}`}>
                       <span className="set-num">{setIdx + 1}</span>
                       <div style={{ textAlign: 'left' }}>
-                        <span className="set-target">{set.weight}kg x {formatRepTarget(ex, set)} tek {set.rir !== undefined ? `@RIR${set.rir}` : ''}</span>
+                        <span className="set-target">{target.weight}kg x {target.reps} tek {target.rir !== undefined ? `@RIR${target.rir}` : ''}</span>
                         {lastHint && <div style={{ fontSize: '10px', color: 'var(--accent-mint)', fontWeight: 700, marginTop: '2px' }}>↩ {lastHint}</div>}
                       </div>
 
@@ -915,7 +919,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                         <input
                           type="number"
                           value={set.actualWeight !== undefined ? set.actualWeight : ''}
-                          placeholder={set.weight !== undefined ? set.weight.toString() : ''}
+                          placeholder={target.weight !== undefined ? target.weight.toString() : ''}
                           onChange={(e) =>
                             handleActualChange(exIdx, setIdx, 'actualWeight', parseFloat(e.target.value) || 0)
                           }
@@ -942,7 +946,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                           type="number"
                           min="0"
                           max="10"
-                          placeholder={set.rir !== undefined ? set.rir.toString() : '2'}
+                          placeholder={target.rir !== undefined ? target.rir.toString() : '2'}
                           value={set.actualRir !== undefined ? set.actualRir : ''}
                           onChange={(e) =>
                             handleActualChange(exIdx, setIdx, 'actualRir', parseInt(e.target.value) || 0)
@@ -991,7 +995,10 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                             </button>
                           )}
                         </div>
-                        <span className="set-target-desc">Hedef: {set.weight}kg x {formatRepTarget(ex, set)} tek</span>
+                        <span className="set-target-desc">
+                          Hedef: {target.weight}kg x {target.reps} tek
+                          {target.rir !== undefined && ` · RIR ${target.rir}`}
+                        </span>
                         {lastHint && <span style={{ fontSize: '10px', color: 'var(--accent-mint)', fontWeight: 700 }}>↩ {lastHint}</span>}
                       </div>
 
@@ -1001,11 +1008,11 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                         className="mobile-set-log-pill"
                         disabled={set.completed}
                       >
-                        <span>{set.actualWeight !== undefined ? `${set.actualWeight} kg` : `${set.weight} kg`}</span>
+                        <span>{set.actualWeight !== undefined ? `${set.actualWeight} kg` : `${target.weight} kg`}</span>
                         <span className="pill-divider">x</span>
-                        <span>{set.actualReps !== undefined ? `${set.actualReps} tek` : `${set.reps} tek`}</span>
+                        <span>{set.actualReps !== undefined ? `${set.actualReps} tek` : `${target.repsValue} tek`}</span>
                         <span className="pill-divider">|</span>
-                        <span>{set.actualRir !== undefined ? `RIR ${set.actualRir}` : `RIR ${set.rir !== undefined ? set.rir : '-'}`}</span>
+                        <span>{set.actualRir !== undefined ? `RIR ${set.actualRir}` : `RIR ${target.rir !== undefined ? target.rir : '-'}`}</span>
                       </button>
 
                       <div className="checkbox-cell-mobile">
@@ -1033,7 +1040,8 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           {/* Antrenman notu */}
           <div className="glass-panel" style={{ padding: '16px 20px' }}>
             <label style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '8px' }}>
-              📝 Antrenman Notu <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opsiyonel)</span>
+              <FileText size={14} aria-hidden="true" style={{ verticalAlign: '-2px', marginRight: 6 }} />
+              Antrenman Notu <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(opsiyonel)</span>
             </label>
             <textarea
               value={workoutNote}
@@ -1042,7 +1050,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
               rows={2}
               style={{
                 width: '100%',
-                background: 'rgba(255,255,255,0.03)',
+                background: 'var(--surface-3)',
                 border: '1px solid var(--border-light)',
                 borderRadius: 'var(--radius-sm)',
                 color: 'var(--text-primary)',
@@ -1057,1009 +1065,16 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           </div>
         </div>
 
-        {/* Dynamic floating/sticky Rest Timer panel */}
-        <div className={`rest-timer-pane ${isResting ? 'resting' : 'idle'}`}>
-          <div className={`rest-timer-card glass-panel ${isResting ? 'active-rest' : 'inactive-rest'}`}>
-            {isResting ? (
-              <>
-                {/* Desktop View (Circular visual countdown) */}
-                <div className="desktop-only" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', width: '100%' }}>
-                  <div className="rest-card-header">
-                    <Bell className="bell-icon animated-bell" size={20} />
-                    <span>DİNLENME SÜRESİ</span>
-                  </div>
-
-                  <p className="rest-next-ex">Sıradaki: {currentRestExercise}</p>
-
-                  <div className="timer-circle-container">
-                    <svg className="timer-circle-svg">
-                      <defs>
-                        <linearGradient id="timerGradient" x1="0" y1="0" x2="1" y2="1">
-                          <stop offset="0%" stopColor="var(--accent-cyan)" />
-                          <stop offset="100%" stopColor="var(--accent-violet)" />
-                        </linearGradient>
-                      </defs>
-                      <circle className="timer-circle-bg" cx="80" cy="80" r="70" />
-                      <circle
-                        className="timer-circle-progress"
-                        cx="80"
-                        cy="80"
-                        r="70"
-                        strokeDasharray={440}
-                        strokeDashoffset={restDuration > 0 ? (restSecondsLeft / restDuration) * 440 : 0}
-                      />
-                    </svg>
-                    <div className="timer-text-container">
-                      <span className="timer-time">{restSecondsLeft}</span>
-                      <span className="timer-label">saniye</span>
-                    </div>
-                  </div>
-
-                  <div className="rest-timer-actions" style={{ flexWrap: 'wrap', gap: '8px' }}>
-                    {[60, 90, 120, 180].map(sec => (
-                      <button
-                        key={sec}
-                        onClick={() => changeRestDuration(sec)}
-                        className="btn btn-secondary btn-sm"
-                        style={{ minWidth: 44, padding: '4px 8px', fontSize: 12 }}
-                      >
-                        {sec < 60 ? `${sec}s` : sec === 60 ? '1dk' : sec === 90 ? '1.5dk' : sec === 120 ? '2dk' : '3dk'}
-                      </button>
-                    ))}
-                    <button id="skip-rest-btn-desktop" onClick={skipRest} className="btn btn-primary btn-sm btn-icon">
-                      <FastForward size={16} />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Mobile View (Sleek Horizontal Player Bar) */}
-                <div className="mobile-only mobile-horizontal-rest" style={{ width: '100%' }}>
-                  <div className="rest-info-group">
-                    <Bell className="bell-icon animated-bell" size={18} />
-                    <div className="rest-details">
-                      <span className="rest-title-lbl">DİNLENME SÜRESİ</span>
-                      <span className="rest-next-lbl">Sıradaki: {currentRestExercise}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="rest-counter-val">
-                    {restSecondsLeft} <span className="sec-lbl">sn</span>
-                  </div>
-
-                  <div className="rest-actions-group">
-                    {[90, 120, 180].map(sec => (
-                      <button
-                        key={sec}
-                        onClick={() => changeRestDuration(sec)}
-                        className="btn btn-secondary btn-sm compact-btn"
-                        style={{ fontSize: 11 }}
-                      >
-                        {sec === 90 ? '1.5dk' : sec === 120 ? '2dk' : '3dk'}
-                      </button>
-                    ))}
-                    <button id="skip-rest-btn-mobile" aria-label="skip-rest-btn-mobile" onClick={skipRest} className="btn btn-primary btn-sm compact-btn">
-                      <FastForward size={14} />
-                    </button>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="resting-idle-state">
-                <Dumbbell size={36} className="idle-dumbell" />
-                <h3>Hazır</h3>
-                <p className="idle-sub">Bir seti tamamladığınızda dinlenme sayacı otomatik olarak başlayacaktır.</p>
-              </div>
-            )}
-          </div>
-        </div>
+        <RestTimerPanel
+          isResting={isResting}
+          restSecondsLeft={restSecondsLeft}
+          restDuration={restDuration}
+          currentRestExercise={currentRestExercise}
+          skipRest={skipRest}
+          changeRestDuration={changeRestDuration}
+        />
       </div>
 
-      <style>{`
-        .active-workout-container {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-        }
-
-        .active-workout-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 16px 24px;
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          background: rgba(13, 15, 23, 0.85);
-        }
-
-        .header-info {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-
-        .active-badge {
-          font-size: 11px;
-          font-weight: 800;
-          color: var(--accent-mint);
-          letter-spacing: 0.05em;
-          display: flex;
-          align-items: center;
-        }
-
-        .pulse-glowing-mint {
-          animation: glowMint 1.5s infinite;
-        }
-
-        @keyframes glowMint {
-          0% { opacity: 0.7; }
-          50% { opacity: 1; text-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
-          100% { opacity: 0.7; }
-        }
-
-        .active-parent-name {
-          display: block;
-          font-size: 11px;
-          font-weight: 700;
-          letter-spacing: 0.06em;
-          text-transform: uppercase;
-          color: var(--text-muted);
-          margin-bottom: 2px;
-        }
-
-        .active-program-title {
-          font-size: 22px;
-          font-weight: 800;
-          letter-spacing: -0.02em;
-          display: -webkit-box;
-          -webkit-line-clamp: 2;
-          -webkit-box-orient: vertical;
-          overflow: hidden;
-        }
-
-        .header-timer {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-light);
-          padding: 8px 16px;
-          border-radius: var(--radius-md);
-        }
-
-        .timer-icon {
-          color: var(--accent-violet);
-        }
-
-        .duration-clock {
-          font-family: var(--font-headings);
-          font-size: 20px;
-          font-weight: 800;
-          letter-spacing: 0.02em;
-        }
-
-        .header-actions {
-          display: flex;
-          gap: 10px;
-        }
-
-        .btn-cancel {
-          background: rgba(239, 68, 68, 0.1);
-          border-color: rgba(239, 68, 68, 0.2);
-          color: #f87171;
-        }
-
-        .btn-cancel:hover {
-          background: rgba(239, 68, 68, 0.2);
-          border-color: rgba(239, 68, 68, 0.4);
-        }
-
-        .btn-finish {
-          background: var(--gradient-primary);
-          box-shadow: 0 4px 12px rgba(236, 72, 153, 0.25);
-        }
-
-        .btn-finish:hover {
-          box-shadow: 0 6px 16px rgba(236, 72, 153, 0.4);
-        }
-
-        /* Layout Grid */
-        .active-workout-layout {
-          display: grid;
-          grid-template-columns: 2fr 1fr;
-          gap: 20px;
-          align-items: start;
-        }
-
-        .exercises-scroller {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .active-exercise-card {
-          padding: 24px;
-        }
-
-        .active-card-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          border-bottom: 1px solid var(--border-light);
-          padding-bottom: 14px;
-          margin-bottom: 16px;
-        }
-
-        .active-ex-name {
-          font-size: 20px;
-          font-weight: 700;
-          margin-bottom: 4px;
-        }
-
-        .rest-indicator {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-secondary);
-        }
-
-        .rest-badge-mini {
-          font-size: 11px;
-          background: rgba(255, 255, 255, 0.03);
-          border: 1px solid var(--border-light);
-          color: var(--text-secondary);
-          padding: 2px 8px;
-          border-radius: var(--radius-full);
-          font-weight: 600;
-        }
-
-        /* Sets log table formatting */
-        .active-sets-table {
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-
-        .active-table-row {
-          display: grid;
-          grid-template-columns: 40px 1.4fr 1fr 1fr 1fr 60px 36px;
-          align-items: center;
-          gap: 12px;
-          padding: 8px 12px;
-          border-radius: var(--radius-sm);
-          transition: all var(--transition-fast);
-        }
-
-        .active-table-row.labels {
-          font-size: 11px;
-          font-weight: 600;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          text-align: center;
-        }
-
-        .active-table-row.data {
-          background: rgba(255, 255, 255, 0.01);
-          border: 1px solid var(--border-light);
-          text-align: center;
-        }
-
-        .active-table-row.data:hover {
-          background: rgba(255, 255, 255, 0.03);
-          border-color: var(--border-medium);
-        }
-
-        .active-table-row.set-done {
-          background: rgba(16, 185, 129, 0.04);
-          border-color: rgba(16, 185, 129, 0.2);
-          opacity: 0.7;
-        }
-
-        .set-num {
-          font-weight: 800;
-          color: var(--text-secondary);
-        }
-
-        .active-table-row.set-done .set-num {
-          color: var(--accent-mint);
-        }
-
-        .set-target {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--text-secondary);
-        }
-
-        .checkbox-cell {
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-
-        .btn-add-set-during {
-          background: transparent;
-          border: 1px dashed var(--border-medium);
-          color: var(--text-secondary);
-          width: 100%;
-          padding: 10px;
-          border-radius: var(--radius-sm);
-          font-weight: 600;
-          font-size: 13px;
-          cursor: pointer;
-          margin-top: 14px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          transition: all var(--transition-fast);
-        }
-
-        .btn-add-set-during:hover {
-          color: var(--text-primary);
-          border-color: var(--accent-violet);
-          background: rgba(255, 255, 255, 0.01);
-        }
-
-        /* Rest Timer Column */
-        .rest-timer-pane {
-          position: sticky;
-          top: 94px;
-        }
-
-        .rest-timer-card {
-          padding: 30px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 20px;
-          min-height: 320px;
-        }
-
-        .rest-timer-card.active-rest {
-          background: radial-gradient(circle at center, rgba(6, 182, 212, 0.05) 0%, transparent 80%),
-                      var(--bg-card);
-          border-color: rgba(6, 182, 212, 0.25);
-          box-shadow: 0 0 30px rgba(6, 182, 212, 0.1);
-        }
-
-        .rest-card-header {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          font-size: 12px;
-          font-weight: 800;
-          color: var(--accent-cyan);
-          letter-spacing: 0.06em;
-        }
-
-        .bell-icon {
-          color: var(--accent-cyan);
-        }
-
-        .animated-bell {
-          animation: ringBell 2s infinite alternate;
-        }
-
-        @keyframes ringBell {
-          0% { transform: rotate(0deg); }
-          20% { transform: rotate(15deg); }
-          40% { transform: rotate(-15deg); }
-          60% { transform: rotate(10deg); }
-          80% { transform: rotate(-10deg); }
-          100% { transform: rotate(0deg); }
-        }
-
-        .rest-next-ex {
-          font-weight: 600;
-          font-size: 13px;
-          color: var(--text-secondary);
-          text-align: center;
-          max-width: 200px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .rest-timer-actions {
-          display: flex;
-          gap: 12px;
-          width: 100%;
-          justify-content: center;
-        }
-
-        .resting-idle-state {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 15px;
-          text-align: center;
-          color: var(--text-muted);
-          padding: 20px;
-        }
-
-        .idle-dumbell {
-          color: var(--border-medium);
-        }
-
-        .resting-idle-state h3 {
-          color: var(--text-secondary);
-          font-size: 18px;
-        }
-
-        .idle-sub {
-          font-size: 12px;
-          line-height: 1.5;
-        }
-
-        @media (max-width: 1000px) {
-          .active-workout-layout {
-            grid-template-columns: 1fr;
-          }
-          .rest-timer-pane {
-            position: fixed;
-            top: auto !important;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            width: 280px;
-          }
-          .rest-timer-pane.idle {
-            display: none !important;
-          }
-          .rest-timer-card {
-            min-height: auto;
-            padding: 20px;
-            box-shadow: var(--shadow-lg);
-            border: 1px solid var(--border-medium);
-            background: var(--bg-card-solid);
-          }
-          .timer-circle-container {
-            width: 120px;
-            height: 120px;
-          }
-          .timer-time {
-            font-size: 24px;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .active-table-row-mobile.mobile-only {
-            display: flex !important;
-          }
-          .active-workout-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 15px;
-            padding: 15px;
-          }
-          .header-actions {
-            width: 100%;
-          }
-          .header-actions button {
-            flex: 1;
-          }
-          .active-table-row {
-            grid-template-columns: 30px 1.4fr 1fr 1fr 1fr 40px;
-            gap: 6px;
-            padding: 6px;
-          }
-          .set-target {
-            font-size: 11px;
-          }
-          .rest-timer-pane {
-            position: fixed;
-            top: auto !important;
-            bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important;
-            left: 0 !important;
-            right: 0 !important;
-            width: 100vw !important;
-            max-width: 100% !important;
-            z-index: 1000;
-          }
-          .rest-timer-card {
-            border-radius: 0 !important;
-            border-left: none !important;
-            border-right: none !important;
-            border-bottom: none !important;
-            padding: 12px 20px !important;
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4) !important;
-            width: 100% !important;
-            background: rgba(13, 15, 23, 0.95) !important;
-            backdrop-filter: blur(20px) !important;
-            -webkit-backdrop-filter: blur(20px) !important;
-            min-height: auto !important;
-          }
-          /* Reserve space so the fixed rest-timer bar never hides the active set */
-          .exercises-scroller.rest-bar-visible {
-            padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
-          }
-        }
-
-        /* Desktop/Mobile Visibility Utilities */
-        @media (min-width: 769px) {
-          .desktop-only { display: block !important; }
-          .mobile-only { display: none !important; }
-          .active-table-row.desktop-only { display: grid !important; }
-        }
-        @media (max-width: 768px) {
-          .desktop-only { display: none !important; }
-          .mobile-only { display: block !important; }
-        }
-
-        /* Mobile Row Styles */
-        .active-table-row-mobile {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 12px 16px;
-          background: rgba(255, 255, 255, 0.01);
-          border: 1px solid var(--border-light);
-          border-radius: var(--radius-md);
-          gap: 12px;
-          margin-bottom: 8px;
-          transition: all var(--transition-fast);
-        }
-
-        .active-table-row-mobile.set-done {
-          background: rgba(16, 185, 129, 0.04);
-          border-color: rgba(16, 185, 129, 0.2);
-          opacity: 0.7;
-        }
-
-        .set-mobile-info {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 2px;
-          flex: 1;
-        }
-
-        .set-num-badge {
-          font-size: 14px;
-          font-weight: 800;
-          color: var(--text-primary);
-        }
-
-        .set-target-desc {
-          font-size: 11px;
-          color: var(--text-muted);
-          font-weight: 600;
-        }
-
-        .mobile-set-log-pill {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          background: rgba(139, 92, 246, 0.06);
-          border: 1px solid rgba(139, 92, 246, 0.2);
-          padding: 10px 16px;
-          border-radius: var(--radius-full);
-          font-size: 14px;
-          font-weight: 700;
-          color: var(--accent-violet);
-          cursor: pointer;
-          transition: all var(--transition-fast);
-          min-width: 145px;
-        }
-
-        .mobile-set-log-pill:hover {
-          background: rgba(139, 92, 246, 0.12);
-          border-color: var(--accent-violet);
-        }
-
-        .mobile-set-log-pill:disabled {
-          background: rgba(255, 255, 255, 0.02);
-          border-color: var(--border-light);
-          color: var(--text-secondary);
-          cursor: not-allowed;
-        }
-
-        .pill-divider {
-          opacity: 0.4;
-          font-weight: 400;
-        }
-
-        .checkbox-cell-mobile {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        /* Mobile Horizontal Rest Banner */
-        .mobile-horizontal-rest {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          width: 100%;
-          gap: 12px;
-        }
-
-        .rest-info-group {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex: 1;
-        }
-
-        .rest-details {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 2px;
-        }
-
-        .rest-title-lbl {
-          font-size: 10px;
-          font-weight: 800;
-          color: var(--accent-cyan);
-          letter-spacing: 0.05em;
-        }
-
-        .rest-next-lbl {
-          font-size: 12px;
-          font-weight: 700;
-          color: var(--text-primary);
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          max-width: 130px;
-        }
-
-        .rest-counter-val {
-          font-family: var(--font-headings);
-          font-size: 20px;
-          font-weight: 800;
-          color: var(--text-primary);
-          display: flex;
-          align-items: baseline;
-          gap: 2px;
-        }
-
-        .rest-counter-val .sec-lbl {
-          font-size: 11px;
-          color: var(--text-secondary);
-          font-weight: 600;
-        }
-
-        .rest-actions-group {
-          display: flex;
-          gap: 8px;
-        }
-
-        .compact-btn {
-          height: 36px;
-          padding: 0 12px;
-          font-size: 12px;
-          font-weight: 700;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        /* Bottom Sheet Stacking Context Fixes */
-        body.bottom-sheet-open .main-content {
-          position: relative;
-          z-index: 2000 !important;
-        }
-        body.bottom-sheet-open .sidebar-container {
-          z-index: 10 !important;
-        }
-        body.bottom-sheet-open .mobile-top-bar {
-          z-index: 10 !important;
-        }
-
-        /* Bottom Sheet Modal */
-        /* Ekranın ortasında açılır. Önceden alta yapışıyordu (align-items: flex-end);
-           Android WebView'de env(safe-area-inset-bottom) 0 döndüğü için butonlar
-           jest çubuğunun altında kalıp görünmez oluyordu. */
-        .bottom-sheet-backdrop {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100dvh;
-          background: rgba(0, 0, 0, 0.6);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 16px;
-          padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-          overflow-y: auto;
-          z-index: 2100;
-          animation: fadeIn 0.3s ease-out;
-        }
-
-        .bottom-sheet-content {
-          width: 100%;
-          max-width: 500px;
-          max-height: 88dvh;
-          overflow-y: auto;
-          margin: auto 0;
-          background: var(--bg-card-solid);
-          border: 1px solid var(--border-medium);
-          border-radius: var(--radius-lg);
-          padding: 26px 22px;
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-          box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-          animation: popInSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        @keyframes popInSheet {
-          from { transform: scale(0.94); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
-        }
-
-        .bottom-sheet-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          border-bottom: 1px solid var(--border-light);
-          padding-bottom: 16px;
-          position: relative;
-          text-align: left;
-        }
-
-        .bottom-sheet-header h3 {
-          font-size: 18px;
-          font-weight: 800;
-          color: var(--text-primary);
-          margin-bottom: 4px;
-        }
-
-        .bottom-sheet-header p {
-          font-size: 13px;
-          color: var(--text-secondary);
-        }
-
-        .btn-close-sheet {
-          background: transparent;
-          border: none;
-          color: var(--text-muted);
-          cursor: pointer;
-          padding: 4px;
-          transition: color var(--transition-fast);
-        }
-
-        .btn-close-sheet:hover {
-          color: var(--text-primary);
-        }
-
-        /* Slider Controls */
-        .slider-group {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          text-align: left;
-        }
-
-        .slider-label-row {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-size: 14px;
-          font-weight: 700;
-          color: var(--text-secondary);
-        }
-
-        .slider-value-display {
-          color: var(--accent-violet);
-        }
-
-        .slider-value-display strong {
-          font-size: 20px;
-          font-weight: 800;
-          font-family: var(--font-headings);
-        }
-
-        .slider-control-row {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-        }
-
-        .btn-icon-small {
-          width: 48px;
-          height: 40px;
-          padding: 0;
-          font-size: 13px;
-          border-radius: var(--radius-sm);
-          font-weight: 700;
-        }
-
-        .touch-slider {
-          flex: 1;
-          -webkit-appearance: none;
-          appearance: none;
-          height: 8px;
-          border-radius: var(--radius-full);
-          background: rgba(255, 255, 255, 0.05);
-          outline: none;
-          border: 1px solid var(--border-light);
-        }
-
-        .touch-slider::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          background: var(--gradient-primary);
-          cursor: pointer;
-          box-shadow: 0 0 10px var(--accent-violet-glow);
-          border: 2px solid #fff;
-          transition: transform 0.1s;
-        }
-
-        .touch-slider::-webkit-slider-thumb:active {
-          transform: scale(1.2);
-        }
-
-        .sheet-actions {
-          margin-top: 10px;
-        }
-
-        /* V2 - Celebration & Confetti styling */
-        .celebration-backdrop {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100dvh;
-          background: rgba(9, 10, 15, 0.95);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          z-index: 2000;
-          padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px)) 20px;
-          overflow-y: auto;
-          animation: fadeIn 0.3s ease-out;
-        }
-
-        .celebration-card {
-          max-width: 440px;
-          width: 100%;
-          padding: 40px;
-          text-align: center;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 20px;
-          position: relative;
-          box-shadow: 0 0 45px rgba(139, 92, 246, 0.3);
-          border: 1px solid var(--accent-violet);
-          margin: auto 0;
-        }
-
-        .pr-congrats-title {
-          font-family: var(--font-headings);
-          font-size: 26px;
-          font-weight: 800;
-          line-height: 1.2;
-          background: var(--gradient-primary);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-        }
-
-        .pr-trophy {
-          font-size: 54px;
-          animation: bounceTrophy 1.2s infinite alternate ease-in-out;
-        }
-
-        @keyframes bounceTrophy {
-          0% { transform: translateY(0) scale(1); }
-          100% { transform: translateY(-12px) scale(1.08); }
-        }
-
-        .pr-broken-list {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          width: 100%;
-          margin: 10px 0;
-          max-height: 200px;
-          overflow-y: auto;
-          padding-right: 4px;
-        }
-
-        .pr-broken-item {
-          display: flex;
-          flex-direction: column;
-          background: rgba(255, 255, 255, 0.02);
-          border: 1px solid var(--border-light);
-          padding: 12px;
-          border-radius: var(--radius-md);
-          text-align: left;
-        }
-
-        .pr-item-name {
-          font-weight: 700;
-          font-size: 14px;
-          color: var(--text-primary);
-          margin-bottom: 2px;
-        }
-
-        .pr-item-stats {
-          font-size: 12px;
-          color: var(--accent-pink);
-          font-weight: 600;
-        }
-
-        /* Mobilde kutlama kartını kompaktlaştır: birden fazla PR kırıldığında bile
-           "Kaydet ve Devam Et" butonu ilk açılışta ekranda kalsın. */
-        @media (max-width: 768px) {
-          .celebration-card {
-            padding: 24px 20px;
-            gap: 12px;
-          }
-          .pr-trophy {
-            font-size: 38px;
-          }
-          .pr-congrats-title {
-            font-size: 21px;
-          }
-          .pr-broken-list {
-            max-height: 34vh;
-            margin: 4px 0;
-            gap: 8px;
-          }
-          .pr-broken-item {
-            padding: 10px;
-          }
-          /* Son çare: kart yine de taşarsa buton kaydırma alanının altına yapışsın */
-          .celebration-card > .btn {
-            position: sticky;
-            bottom: 0;
-          }
-        }
-
-        /* Confetti particles */
-        .confetti-container {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          pointer-events: none;
-        }
-
-        .confetti-piece {
-          position: absolute;
-          width: 8px;
-          height: 14px;
-          border-radius: 2px;
-          opacity: 0.85;
-          animation: fallConfetti 3.2s infinite linear;
-        }
-
-        @keyframes fallConfetti {
-          0% { transform: translateY(-20px) rotate(0deg); }
-          100% { transform: translateY(100vh) rotate(360deg); }
-        }
-
-        .mini-input {
-          width: 68px;
-          height: 34px;
-          padding: 4px 6px !important;
-          text-align: center;
-          border-radius: var(--radius-sm) !important;
-          font-weight: 700;
-          font-family: var(--font-headings);
-          font-size: 14px !important;
-        }
-
-        .mini-input::placeholder {
-          color: var(--text-muted);
-          opacity: 0.6;
-        }
-      `}</style>
 
       {/* Custom confirm modal (replaces window.confirm) */}
       {confirmModal && (
@@ -2108,7 +1123,7 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
           </div>
 
           <div className="celebration-card glass-panel anim-slide-up">
-            <span className="pr-trophy">🏆</span>
+            <Trophy className="pr-trophy" size={44} aria-hidden="true" />
             <h2 className="pr-congrats-title">Yeni Kişisel Rekor!</h2>
             <p className="welcome-subtitle">Bu antrenmanda sınırlarınızı zorlayarak yeni zirvelere ulaştınız!</p>
             
@@ -2153,21 +1168,21 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
               <div className="slider-label-row">
                 <span>Ağırlık:</span>
                 <span className="slider-value-display">
-                  <strong>{exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight}</strong> kg
+                  <strong>{exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight}</strong> kg
                 </span>
               </div>
               <div className="slider-control-row">
                 <button
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', Math.max(0, cur - 5));
                   }}
                 >-5</button>
                 <button
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', Math.max(0, cur - 2.5));
                   }}
                 >-2.5</button>
@@ -2176,21 +1191,21 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   min="0"
                   max="300"
                   step="2.5"
-                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight}
+                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight}
                   onChange={(e) => handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', parseFloat(e.target.value))}
                   className="touch-slider"
                 />
                 <button
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', cur + 2.5);
                   }}
                 >+2.5</button>
                 <button
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].weight;
+                    const cur = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualWeight ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).weight;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualWeight', cur + 5);
                   }}
                 >+5</button>
@@ -2202,14 +1217,14 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
               <div className="slider-label-row">
                 <span>Tekrar:</span>
                 <span className="slider-value-display">
-                  <strong>{exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].reps}</strong> tekrar
+                  <strong>{exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).repsValue}</strong> tekrar
                 </span>
               </div>
               <div className="slider-control-row">
                 <button 
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].reps;
+                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).repsValue;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualReps', Math.max(1, current - 1));
                   }}
                 >
@@ -2220,14 +1235,14 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   min="1" 
                   max="50" 
                   step="1" 
-                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].reps}
+                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).repsValue}
                   onChange={(e) => handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualReps', parseInt(e.target.value))}
                   className="touch-slider"
                 />
                 <button 
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].reps;
+                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualReps ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).repsValue;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualReps', current + 1);
                   }}
                 >
@@ -2241,14 +1256,14 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
               <div className="slider-label-row">
                 <span>RIR (Tükenişe Kalan):</span>
                 <span className="slider-value-display">
-                  <strong>RIR {exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].rir ?? 2}</strong>
+                  <strong>RIR {exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).rir ?? 2}</strong>
                 </span>
               </div>
               <div className="slider-control-row">
                 <button 
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].rir ?? 2;
+                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).rir ?? 2;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualRir', Math.max(0, current - 1));
                   }}
                 >
@@ -2259,14 +1274,14 @@ export const ActiveWorkout: React.FC<ActiveWorkoutProps> = ({
                   min="0" 
                   max="10" 
                   step="1" 
-                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].rir ?? 2}
+                  value={exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).rir ?? 2}
                   onChange={(e) => handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualRir', parseInt(e.target.value))}
                   className="touch-slider"
                 />
                 <button 
                   className="btn btn-secondary btn-icon-small"
                   onClick={() => {
-                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].rir ?? 2;
+                    const current = exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx].actualRir ?? resolveSetTarget(exercises[activeSetEdit.exIdx], exercises[activeSetEdit.exIdx].sets[activeSetEdit.setIdx]).rir ?? 2;
                     handleActualChange(activeSetEdit.exIdx, activeSetEdit.setIdx, 'actualRir', Math.min(10, current + 1));
                   }}
                 >

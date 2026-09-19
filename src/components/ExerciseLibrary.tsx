@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Search, Plus, X, BookOpen, AlertCircle } from 'lucide-react';
 import type { Exercise, PersonalRecord, CompletedWorkout } from '../types';
 
@@ -29,33 +29,79 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
 
   const categories = ['All', 'Göğüs', 'Sırt', 'Bacak', 'Omuz', 'Kol', 'Karın', 'Kardiyo'];
 
-  const getExerciseUsageCount = (exerciseId: string) => {
-    return history.reduce((count, workout) => {
-      const hasEx = workout.exercises.some(ex => ex.exerciseId === exerciseId);
-      return count + (hasEx ? 1 : 0);
-    }, 0);
-  };
-
-  const getExerciseMaxWeight = (exerciseId: string) => {
-    const pr = personalRecords.find(p => p.exerciseId === exerciseId);
-    return pr ? pr.maxWeight : 0;
-  };
-
-  const filteredExercises = exercises
-    .filter((ex) => {
-      const matchesSearch = ex.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            (ex.description && ex.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesCategory = selectedCategory === 'All' || ex.category === selectedCategory;
-      return matchesSearch && matchesCategory;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'popularity') {
-        const countA = getExerciseUsageCount(a.id);
-        const countB = getExerciseUsageCount(b.id);
-        if (countA !== countB) return countB - countA;
-      }
-      return a.name.localeCompare(b.name, 'tr-TR');
+  // Kullanım sayıları geçmiş üzerinde TEK geçişte hesaplanır. Eskiden her kart
+  // için ayrı ayrı (1500 kez) ve ayrıca sıralama karşılaştırıcısının içinde
+  // (n log n kez) geçmiş baştan sona taranıyordu.
+  const usageCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    history.forEach(workout => {
+      const seen = new Set<string>();
+      workout.exercises.forEach(ex => {
+        if (seen.has(ex.exerciseId)) return;
+        seen.add(ex.exerciseId);
+        counts.set(ex.exerciseId, (counts.get(ex.exerciseId) ?? 0) + 1);
+      });
     });
+    return counts;
+  }, [history]);
+
+  const maxWeights = useMemo(() => {
+    const weights = new Map<string, number>();
+    personalRecords.forEach(pr => weights.set(pr.exerciseId, pr.maxWeight));
+    return weights;
+  }, [personalRecords]);
+
+  const filteredExercises = useMemo(() => {
+    const needle = searchTerm.trim().toLowerCase();
+    return exercises
+      .filter((ex) => {
+        const matchesSearch = !needle
+          || ex.name.toLowerCase().includes(needle)
+          || (ex.description?.toLowerCase().includes(needle) ?? false);
+        const matchesCategory = selectedCategory === 'All' || ex.category === selectedCategory;
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'popularity') {
+          const diff = (usageCounts.get(b.id) ?? 0) - (usageCounts.get(a.id) ?? 0);
+          if (diff !== 0) return diff;
+        }
+        return a.name.localeCompare(b.name, 'tr-TR');
+      });
+  }, [exercises, searchTerm, selectedCategory, sortBy, usageCounts]);
+
+  // Kademeli render: 1524 kartın tamamı DOM'a basılıyordu (~13.700 düğüm,
+  // 353.000px sayfa yüksekliği). Listenin sonundaki gözcü görünür olunca bir
+  // sonraki parça ekleniyor.
+  const PAGE_SIZE = 40;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // Filtre/arama değişince baştan başla. React'in "render sırasında state
+  // ayarlama" deseni; effect içinde setState cascading render yaratıyordu.
+  const filterKey = `${searchTerm}|${selectedCategory}|${sortBy}`;
+  const [appliedFilterKey, setAppliedFilterKey] = useState(filterKey);
+  if (filterKey !== appliedFilterKey) {
+    setAppliedFilterKey(filterKey);
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some(entry => entry.isIntersecting)) {
+        setVisibleCount(current => Math.min(current + PAGE_SIZE, filteredExercises.length));
+      }
+    }, { rootMargin: '600px' });
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [filteredExercises.length]);
+
+  const visibleExercises = filteredExercises.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredExercises.length;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,14 +161,15 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
         <div className="search-bar-wrapper">
           <Search className="search-icon" size={20} />
           <input
-            type="text"
+            type="search"
+            aria-label="Egzersiz ara"
             placeholder="Egzersiz adı veya açıklama ara..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
           />
           {searchTerm && (
-            <button onClick={() => setSearchTerm('')} className="search-clear-btn">
+            <button onClick={() => setSearchTerm('')} className="search-clear-btn" aria-label="Aramayı temizle">
               <X size={16} />
             </button>
           )}
@@ -142,8 +189,14 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Sırala:</span>
+            <label
+              htmlFor="library-sort"
+              style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}
+            >
+              Sırala:
+            </label>
             <select
+              id="library-sort"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'name' | 'popularity')}
               className="form-select"
@@ -174,50 +227,56 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             </button>
           </div>
         ) : (
-          filteredExercises.map((ex) => {
-            const usageCount = getExerciseUsageCount(ex.id);
-            const maxWeight = getExerciseMaxWeight(ex.id);
+          visibleExercises.map((ex) => {
+            const usageCount = usageCounts.get(ex.id) ?? 0;
+            const maxWeight = maxWeights.get(ex.id) ?? 0;
             
             return (
               <div 
                 key={ex.id} 
                 className="exercise-card glass-panel" 
                 onClick={() => setSelectedExerciseDetail(ex)}
-                style={{ 
-                  height: 'auto', 
-                  minHeight: '190px', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  justifyContent: 'space-between',
-                  cursor: 'pointer'
-                }}
+                style={{ cursor: 'pointer' }}
               >
                 <div>
-                  <div className="exercise-card-header" style={{ marginBottom: '8px' }}>
+                  <div className="exercise-card-header" style={{ marginBottom: '6px' }}>
                     <span className={`badge ${getCategoryBadgeClass(ex.category)}`}>{ex.category}</span>
                     {ex.isCustom && <span className="custom-indicator-badge">Özel</span>}
                   </div>
-                  <h3 className="exercise-name" style={{ marginBottom: '6px' }}>{ex.name}</h3>
-                  <p className="exercise-desc">
+                  <h2 className="exercise-name" style={{ marginBottom: '4px' }}>{ex.name}</h2>
+                  <p className="exercise-desc clamp-2">
                     {ex.description || 'Bu egzersiz için henüz bir açıklama eklenmemiş.'}
                   </p>
                 </div>
                 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                    Yapılma: <strong>{usageCount}</strong> seans
-                  </span>
-                  {maxWeight > 0 && (
-                    <span className="badge badge-amber" style={{ fontSize: '11px', fontWeight: '800' }}>
-                      Max: {maxWeight} kg
-                    </span>
-                  )}
-                </div>
+                {(usageCount > 0 || maxWeight > 0) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid var(--surface-3)' }}>
+                    {usageCount > 0 && (
+                      <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                        Yapılma: <strong>{usageCount}</strong> seans
+                      </span>
+                    )}
+                    {maxWeight > 0 && (
+                      <span className="badge badge-amber" style={{ fontSize: '11px', fontWeight: '800', marginLeft: 'auto' }}>
+                        Max: {maxWeight} kg
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })
         )}
       </section>
+
+      {/* Kademeli yüklemenin gözcüsü: görünür olunca sonraki parça eklenir. */}
+      {hasMore && (
+        <div ref={sentinelRef} className="library-sentinel" aria-hidden="true">
+          <span className="library-sentinel-text">
+            {visibleCount} / {filteredExercises.length} hareket
+          </span>
+        </div>
+      )}
 
       {/* Detailed Exercise Modal */}
       {selectedExerciseDetail && (
@@ -238,7 +297,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxHeight: '60vh', overflowY: 'auto', paddingRight: '4px' }}>
               <div className="detail-section">
                 <h4 style={{ fontSize: '12px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px', fontWeight: 700 }}>Açıklama</h4>
-                <p style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.6', background: 'rgba(255, 255, 255, 0.02)', padding: '12px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                <p style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: '1.6', background: 'var(--surface-2)', padding: '12px', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
                   {selectedExerciseDetail.description || 'Bu egzersiz için henüz bir açıklama eklenmemiş.'}
                 </p>
               </div>
@@ -250,7 +309,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                   const pr = personalRecords.find(p => p.exerciseId === selectedExerciseDetail.id);
                   if (pr) {
                     return (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: 'rgba(6, 182, 212, 0.04)', border: '1px solid rgba(6, 182, 212, 0.15)', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: 'var(--accent-cyan-bg)', border: '1px solid var(--accent-cyan-bg-soft)', borderRadius: 'var(--radius-md)' }}>
                         <div>
                           <p style={{ fontSize: '18px', fontWeight: '800', color: 'var(--accent-cyan)' }}>{pr.maxWeight} kg</p>
                           <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>{pr.maxReps} Tekrar</p>
@@ -265,7 +324,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                     );
                   } else {
                     return (
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '12px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '12px', background: 'var(--surface-1)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
                         Henüz bu hareket için rekor kaydı bulunmuyor.
                       </p>
                     );
@@ -293,7 +352,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                     return (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {exHistory.slice(0, 5).map((session, sIdx) => (
-                          <div key={sIdx} style={{ padding: '12px', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                          <div key={sIdx} style={{ padding: '12px', background: 'var(--surface-1)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                               <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--text-primary)' }}>{session.programName}</span>
                               <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
@@ -317,7 +376,7 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
                     );
                   } else {
                     return (
-                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '12px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
+                      <p style={{ fontSize: '13px', color: 'var(--text-secondary)', padding: '12px', background: 'var(--surface-1)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)' }}>
                         Bu egzersizle henüz tamamlanmış bir antrenman bulunmuyor.
                       </p>
                     );
@@ -404,6 +463,28 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
       )}
 
       <style>{`
+        /* Açıklama iki satıra kısılıyor: kartlar eskiden 190px sabit minimum
+           yükseklikteydi ve bir hareket bulmak için sonsuz kaydırma gerekiyordu. */
+        .exercise-desc.clamp-2 {
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+          overflow-wrap: anywhere;
+        }
+
+        .library-sentinel {
+          display: flex;
+          justify-content: center;
+          padding: 24px 0 8px;
+        }
+
+        .library-sentinel-text {
+          font-size: 12px;
+          color: var(--text-muted);
+          font-variant-numeric: tabular-nums;
+        }
+
         .exercise-library-container {
           display: flex;
           flex-direction: column;
@@ -437,17 +518,18 @@ export const ExerciseLibrary: React.FC<ExerciseLibraryProps> = ({
         /* Exercise Grid */
         .exercise-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          gap: 12px;
         }
 
+        /* height: 180px sabitti; açıklaması kısa hareketlerde kartın yarısı boş
+           kalıyor, bir hareket bulmak uzun kaydırma gerektiriyordu. Kart artık
+           içeriği kadar yer kaplıyor. */
         .exercise-card {
-          padding: 20px;
+          padding: 14px 16px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          height: 180px;
-          justify-content: space-between;
+          gap: 8px;
         }
 
         .exercise-card:hover {
