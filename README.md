@@ -15,7 +15,6 @@ Tek bir React kod tabanından **web**, **Android** (Capacitor) ve **Windows masa
 - **Kişisel rekorlar** — Epley formülüyle tahmini 1RM, rekor kırıldığında kutlama
 - **Ölçüm takibi** — kilo, vücut yağı, çevre ölçüleri
 - **Egzersiz kütüphanesi** — ~1500 hareketlik katalog + kendi eklediklerin
-- **Topluluk** — program paylaşma, beğenme, kopyalama
 - **Çevrimdışı çalışır** — Firestore kalıcı önbelleği + localStorage; misafir olarak
   başlayıp sonra Google hesabına geçince yerel veriler hesaba taşınır
 
@@ -75,8 +74,8 @@ Firestore düzeni:
 
 - `users/{uid}/{exercises,programs,history,weightLogs,personalRecords}` — yalnızca
   sahibi okur/yazar
-- `public_programs/{id}` — giriş yapmış herkes okur; yalnızca sahibi düzenler,
-  diğerleri sadece kendi oyunu bir artırıp azaltabilir
+
+Başka koleksiyon için kural tanımlı değildir, yani erişim reddedilir.
 
 `src/utils/firebase.ts` içindeki `apiKey` gizli bilgi değildir; Firebase web
 anahtarları herkese açıktır ve güvenlik tamamen `firestore.rules` ile sağlanır.
@@ -104,3 +103,7 @@ maestro/                   Maestro akışı (Android cihazda)
   eklediği hareketler tutulur.
 - Veri seti ilk boyamadan sonra dinamik `import()` ile yüklenir, bu yüzden kütüphane
   açılıştan kısa süre sonra dolar.
+- **Çevrimdışı kapsamı:** uygulama açıkken bağlantı kesilirse antrenman tamamlanabilir
+  ve veriler cihazda kalır (`e2e-tests/offline.spec.ts` bunu doğrular). Bağlantı
+  yokken uygulamayı sıfırdan açmak yalnızca Android ve Electron sürümlerinde çalışır;
+  web sürümünde service worker bulunmadığı için sayfa yüklenemez.
