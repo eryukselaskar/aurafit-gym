@@ -38,3 +38,8 @@ dist-electron/
 
 # Claude Code worktree/oturum artefaktları
 .claude/worktrees/
+
+# Ortam değişkenleri (kendi Firebase projeniz)
+.env
+.env.local
+android/app/google-services.json

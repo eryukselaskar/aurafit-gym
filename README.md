@@ -90,8 +90,35 @@ npm install
 npm run dev          # http://localhost:5188
 ```
 
-The app runs fully offline against localStorage, so you don't need Firebase
-credentials to try it. Sign-in and cloud sync need your own Firebase project.
+That's it — the app runs without any configuration. Programs, workouts, personal
+records and body metrics are all stored on the device, so you can try everything
+except cloud sync straight away.
+
+### Cloud sync (optional)
+
+Sign-in and Firestore sync run against **your own Firebase project**, not a shared
+one. Copy `.env.example` to `.env` and fill it in:
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Where to find it |
+|---|---|
+| `VITE_FIREBASE_*` | Firebase Console → Project settings → Your apps → Web app |
+| `VITE_GOOGLE_CLIENT_ID` | Authentication → Sign-in method → Google → Web SDK configuration |
+
+Then enable **Anonymous** and **Google** sign-in providers, and deploy the rules:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+For Android, drop your own `android/app/google-services.json` in place and register
+your signing certificate's SHA-1 in the Firebase console.
+
+These keys aren't secrets — Firebase web keys ship with the client by design.
+Security comes from `firestore.rules`.
 
 | Command | What it does |
 |---|---|

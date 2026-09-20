@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { User } from '../utils/firebase';
+import { isFirebaseConfigured } from '../utils/firebase';
 import { LogOut, User as UserIcon, History as HistoryIcon, Activity, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { History } from './History';
 import { MetricsTracker } from './MetricsTracker';
@@ -150,7 +151,13 @@ export const Profile: React.FC<ProfileProps> = ({
           </div>
 
           <div className="profile-actions-section">
-            {isAnonymous ? (
+            {/* Firebase ayarı yoksa bağlanacak bir hesap da yok. */}
+            {isAnonymous && !isFirebaseConfigured ? (
+              <p className="local-only-note">
+                Bu kurulumda bulut eşitlemesi yapılandırılmamış. Verileriniz yalnızca
+                bu cihazda saklanıyor.
+              </p>
+            ) : isAnonymous ? (
               <button
                 onClick={onGoogleSignIn}
                 className="btn btn-primary google-login-btn"

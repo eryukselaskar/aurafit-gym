@@ -163,15 +163,25 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-auth-compat.js"></script>
 
+  <!-- Derleme sırasında üretilir (bkz. vite.config.ts). Ayarlar koda gömülü
+       değil, .env dosyasından gelir. -->
+  <script src="./firebase-config.js"></script>
+
   <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyB1NvMP8OUsTejg_p8WkRpCsgeKE0Kz6gU",
-      authDomain: "aurafit-app-2026.firebaseapp.com",
-      projectId: "aurafit-app-2026",
-      storageBucket: "aurafit-app-2026.firebasestorage.app",
-      messagingSenderId: "586826078940",
-      appId: "1:586826078940:web:42ca79d267f1bc5b977219"
-    };
+    const firebaseConfig = window.__FIREBASE_CONFIG__ || {};
+
+    if (!firebaseConfig.apiKey) {
+      document.body.innerHTML =
+        '<div style="max-width:420px;margin:80px auto;padding:28px;' +
+        'font-family:system-ui,sans-serif;color:#f8fafc;background:#11131c;' +
+        'border-radius:16px;line-height:1.6">' +
+        '<h2 style="margin:0 0 12px">Bulut eşitlemesi yapılandırılmamış</h2>' +
+        '<p style="color:#94a3b8;margin:0">Bu kurulumda Firebase ayarları ' +
+        'tanımlı değil, bu yüzden Google ile giriş kullanılamıyor. Uygulamayı ' +
+        'kendiniz derlediyseniz .env dosyanızı oluşturun (bkz. .env.example). ' +
+        'Bu pencereyi kapatıp misafir olarak devam edebilirsiniz.</p></div>';
+      throw new Error('Firebase yapılandırması yok');
+    }
 
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();

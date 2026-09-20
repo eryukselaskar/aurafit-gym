@@ -4,7 +4,7 @@ import { Dashboard } from './components/Dashboard';
 import { ProgramBuilder } from './components/ProgramBuilder';
 import { ExerciseLibrary } from './components/ExerciseLibrary';
 import { ActiveWorkout } from './components/ActiveWorkout';
-import { auth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, db, signInWithCredential } from './utils/firebase';
+import { auth, signInAnonymously, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut, db, signInWithCredential, isFirebaseConfigured, googleClientId } from './utils/firebase';
 import type { User } from './utils/firebase';
 import { getRedirectResult } from 'firebase/auth';
 import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
@@ -81,7 +81,10 @@ function App() {
   
   // Firebase Auth states
   const [userId, setUserId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Firebase ayarı yoksa beklenecek bir bulut bağlantısı da yok: yükleme
+  // göstergesi hiç açılmaz. Veriler zaten state başlatıcılarında localStorage'dan
+  // okunuyor.
+  const [isLoading, setIsLoading] = useState(isFirebaseConfigured);
   const [isWaitingForBrowser, setIsWaitingForBrowser] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [continueAsGuest, setContinueAsGuest] = useState<boolean>(() => {
@@ -150,6 +153,10 @@ function App() {
 
   // Bind Firebase Auth session
   useEffect(() => {
+    // Firebase ayarı yoksa bulut tarafına hiç girilmez: uygulama doğrudan yerel
+    // modda açılır. Programlar, antrenmanlar ve ölçümler cihazda tutulur.
+    if (!isFirebaseConfigured) return;
+
     // Safety timer: If connection takes longer than 4.5 seconds (offline or console configuration issue),
     // we automatically trigger the fallback so the user is never locked out of the app.
     const fallbackTimeout = setTimeout(() => {
@@ -163,9 +170,7 @@ function App() {
     const isCapacitor = Capacitor.isNativePlatform();
     if (isCapacitor) {
       try {
-        GoogleSignIn.initialize({
-          clientId: '586826078940-5k5rk5sk8ernvn9chli24j62no3qpfvu.apps.googleusercontent.com'
-        });
+        if (googleClientId) GoogleSignIn.initialize({ clientId: googleClientId });
       } catch (e) {
         console.warn("Failed to initialize GoogleSignIn:", e);
       }
@@ -315,9 +320,7 @@ function App() {
       if (isCapacitor) {
         // Use native Capawesome Google Sign-in to trigger OS account chooser
         try {
-          await GoogleSignIn.initialize({
-            clientId: '586826078940-5k5rk5sk8ernvn9chli24j62no3qpfvu.apps.googleusercontent.com'
-          });
+          if (googleClientId) await GoogleSignIn.initialize({ clientId: googleClientId });
         } catch (e) {
           console.warn("GoogleSignIn already initialized or failed to re-initialize:", e);
         }
@@ -432,7 +435,7 @@ function App() {
 
   // Fetch Firestore documents in real-time when userId changes
   useEffect(() => {
-    if (!userId) return;
+    if (!isFirebaseConfigured || !userId) return;
 
     // Not: yükleme göstergesi userId'nin belirlendiği yerde açılır; burada
     // senkron setState çağırmak cascading render'a yol açıyordu.
@@ -1083,7 +1086,8 @@ function App() {
   }
 
   const isUserLoggedInWithGoogle = currentUser && !currentUser.isAnonymous;
-  const showLoginScreen = !isUserLoggedInWithGoogle && !continueAsGuest;
+  // Firebase ayarı yoksa giriş diye bir kavram yok; doğrudan uygulamaya girilir.
+  const showLoginScreen = isFirebaseConfigured && !isUserLoggedInWithGoogle && !continueAsGuest;
 
   if (showLoginScreen) {
     return (

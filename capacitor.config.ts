@@ -18,7 +18,9 @@ const config: CapacitorConfig = {
   },
   plugins: {
     GoogleSignIn: {
-      clientId: '586826078940-5k5rk5sk8ernvn9chli24j62no3qpfvu.apps.googleusercontent.com'
+      // Kendi Firebase projenizin OAuth istemci kimliği. .env dosyasındaki
+      // VITE_GOOGLE_CLIENT_ID ile aynı olmalı.
+      clientId: process.env.VITE_GOOGLE_CLIENT_ID ?? ''
     }
   }
 };

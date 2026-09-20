@@ -37,6 +37,36 @@ npm install
 npm run dev          # http://localhost:5188
 ```
 
+Uygulama hiçbir ayar olmadan çalışır: programlar, antrenmanlar, rekorlar ve
+ölçümler cihazda saklanır.
+
+### Bulut eşitlemesi (isteğe bağlı)
+
+Giriş ve Firestore eşitlemesi **kendi Firebase projeniz** üzerinden çalışır,
+ortak bir proje yoktur. `.env.example` dosyasını `.env` olarak kopyalayıp
+doldurun:
+
+```bash
+cp .env.example .env
+```
+
+| Değişken | Nereden alınır |
+|---|---|
+| `VITE_FIREBASE_*` | Firebase Console → Proje ayarları → Uygulamalarınız → Web |
+| `VITE_GOOGLE_CLIENT_ID` | Authentication → Sign-in method → Google → Web SDK yapılandırması |
+
+Ardından **Anonymous** ve **Google** sağlayıcılarını açıp kuralları deploy edin:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+Android için kendi `android/app/google-services.json` dosyanızı koyun ve imzalama
+sertifikanızın SHA-1'ini Firebase konsoluna kaydedin.
+
+Bu anahtarlar gizli değildir; Firebase web anahtarları istemciyle dağıtılmak
+üzere tasarlanmıştır. Güvenlik `firestore.rules` ile sağlanır.
+
 ## Komutlar
 
 | Komut | Ne yapar |
