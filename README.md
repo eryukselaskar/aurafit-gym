@@ -73,6 +73,23 @@ sign in with Google later and your local data migrates into the account.
 Windows 10+ (64-bit). The binaries aren't code-signed, so SmartScreen will warn
 you — **More info → Run anyway**.
 
+### What you get in the released build
+
+The released binaries ship **without any Firebase configuration**, on purpose. They
+aren't wired to my project, so your data never touches someone else's backend and
+nobody else pays for your usage.
+
+**Everything works locally:** programs, live sessions with the rest timer, workout
+history, personal records, body metrics and the full exercise library. All of it is
+stored on your device.
+
+**What's off:** Google sign-in and cloud sync, so your data doesn't follow you to
+another device.
+
+Want sync? Build it yourself with your own Firebase project — it takes a few
+minutes, see [Cloud sync](#cloud-sync-optional) below. That way the project is
+yours: your quota, your data, your rules.
+
 Android builds aren't published yet; you can build one yourself (see below).
 
 ## Built with

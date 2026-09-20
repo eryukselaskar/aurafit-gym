@@ -16,6 +16,23 @@ Tek bir React kod tabanından **web**, **Android** (Capacitor) ve **Windows masa
 Windows 10+ (64-bit). Uygulama kod imzalama sertifikasıyla imzalanmadığı için
 SmartScreen uyarı verebilir; **Daha fazla bilgi → Yine de çalıştır** ile geçilir.
 
+### Yayınlanan sürümde ne var
+
+Yayınlanan dosyalar **bilinçli olarak hiçbir Firebase ayarı içermez**. Benim
+projeme bağlı değiller; yani verileriniz başkasının sunucusuna gitmez ve sizin
+kullanımınızın bedelini başkası ödemez.
+
+**Yerelde her şey çalışır:** programlar, dinlenme sayaçlı canlı seanslar,
+antrenman geçmişi, kişisel rekorlar, vücut ölçüleri ve tüm egzersiz kütüphanesi.
+Hepsi cihazınızda saklanır.
+
+**Kapalı olan:** Google ile giriş ve bulut eşitlemesi — yani verileriniz başka
+bir cihaza taşınmaz.
+
+Eşitleme isterseniz kendi Firebase projenizle kendiniz derleyin; birkaç dakika
+sürer, aşağıdaki **Bulut eşitlemesi** bölümüne bakın. Böylece proje sizin olur:
+kendi kotanız, kendi verileriniz, kendi kurallarınız.
+
 ## Neler var
 
 - **Program oluşturucu** — çok günlü split'ler, sürükle-bırak sıralama, set/tekrar/RIR
