@@ -4,6 +4,18 @@ Antrenman programlarını planlayıp seansları canlı takip eden bir fitness uy
 Tek bir React kod tabanından **web**, **Android** (Capacitor) ve **Windows masaüstü**
 (Electron) olarak çalışır.
 
+## İndir
+
+**[Son sürümü indir →](https://github.com/eryukselaskar/aurafit-gym/releases/latest)**
+
+| Dosya | Ne zaman |
+|---|---|
+| `AuraFit-Setup-*.exe` | Normal kurulum. Kısayol oluşturur, yönetici izni istemez. |
+| `AuraFit-Portable-*.exe` | Kurulum istemiyorsan. Tek dosya, çift tıkla çalışır. |
+
+Windows 10+ (64-bit). Uygulama kod imzalama sertifikasıyla imzalanmadığı için
+SmartScreen uyarı verebilir; **Daha fazla bilgi → Yine de çalıştır** ile geçilir.
+
 ## Neler var
 
 - **Program oluşturucu** — çok günlü split'ler, sürükle-bırak sıralama, set/tekrar/RIR
@@ -96,6 +108,14 @@ src/
 e2e-tests/                 Playwright
 maestro/                   Maestro akışı (Android cihazda)
 ```
+
+## Katkı
+
+Katkılar memnuniyetle karşılanır — bkz. [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Lisans
+
+[MIT](LICENSE) — dilediğin gibi kullan, değiştir ve dağıt; telif bildirimini koru.
 
 ## Notlar
 
