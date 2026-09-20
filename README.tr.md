@@ -156,6 +156,11 @@ e2e-tests/                 Playwright
 maestro/                   Maestro akışı (Android cihazda)
 ```
 
+## Yol haritası
+
+Açık maddeler [TODO.md](TODO.md) dosyasında: İngilizce arayüz, imzalı Android
+sürümü ve gerçek ekran okuyucu testi en büyükleri.
+
 ## Katkı
 
 Katkılar memnuniyetle karşılanır — bkz. [CONTRIBUTING.md](CONTRIBUTING.md).

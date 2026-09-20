@@ -193,6 +193,11 @@ first. Contributions welcome — open an issue if you want to take it on.
 
 A Turkish version of this README is at [README.tr.md](README.tr.md).
 
+## Roadmap
+
+Open items are tracked in [TODO.md](TODO.md) — English localisation, a signed
+Android release and a real screen-reader pass are the big ones.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Small fixes can go straight to a PR; for
