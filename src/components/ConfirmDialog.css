@@ -60,13 +60,16 @@
   justify-content: center;
 }
 
-.btn-danger {
+/* Onay penceresindeki yıkıcı eylem, uygulamanın genelindeki ince .btn-danger
+   stilinden daha baskın olmalı. Global sınıfı ezmemek için ayrı bir isim:
+   .btn-danger index.css'te tanımlı ve yedi yerde kullanılıyor. */
+.confirm-btn-danger {
   background: var(--accent-red);
   color: #fff;
   border: 1px solid var(--accent-red);
 }
 
-.btn-danger:hover {
+.confirm-btn-danger:hover {
   background: var(--accent-red-strong);
   border-color: var(--accent-red-strong);
 }

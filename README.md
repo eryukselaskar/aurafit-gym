@@ -1,129 +1,159 @@
+<div align="center">
+
 # AuraFit
 
-Antrenman programlarını planlayıp seansları canlı takip eden bir fitness uygulaması.
-Tek bir React kod tabanından **web**, **Android** (Capacitor) ve **Windows masaüstü**
-(Electron) olarak çalışır.
+**A workout tracker that gets out of your way between sets.**
 
-## İndir
+Plan multi-day training splits, run live sessions with a rest timer that keeps
+counting in the background, and let completed weights flow back into next week's
+program automatically.
 
-**[Son sürümü indir →](https://github.com/eryukselaskar/aurafit-gym/releases/latest)**
+One React codebase → **Web**, **Android**, and **Windows desktop**.
 
-| Dosya | Ne zaman |
+[![License: MIT](https://img.shields.io/badge/License-MIT-8b5cf6.svg)](LICENSE)
+[![CI](https://github.com/eryukselaskar/aurafit-gym/actions/workflows/ci.yml/badge.svg)](https://github.com/eryukselaskar/aurafit-gym/actions/workflows/ci.yml)
+[![Download](https://img.shields.io/github/v/release/eryukselaskar/aurafit-gym?color=06b6d4&label=Download)](https://github.com/eryukselaskar/aurafit-gym/releases/latest)
+
+> **Heads up:** the app's interface is currently **Turkish only**. English
+> localisation is on the roadmap — see [Localisation](#localisation).
+
+</div>
+
+---
+
+<div align="center">
+
+| Dashboard | Live session | Rest timer |
+|:---:|:---:|:---:|
+| <img src="docs/screenshots/dashboard.png" width="240" alt="Dashboard showing training streak, total volume and recent sessions"> | <img src="docs/screenshots/workout.png" width="240" alt="Live workout screen with set logging"> | <img src="docs/screenshots/rest-timer.png" width="240" alt="Rest timer bar with progress and next exercise"> |
+
+| Program builder | Exercise library |
+|:---:|:---:|
+| <img src="docs/screenshots/programs.png" width="240" alt="Workout program list"> | <img src="docs/screenshots/library.png" width="240" alt="Exercise library with category filters"> |
+
+</div>
+
+---
+
+## What it does
+
+**Program builder** — Build multi-day splits (PPL, Upper/Lower, anything), reorder
+exercises by drag and drop, set per-exercise rep ranges, target weights and RIR.
+Collapsed cards keep a six-exercise day readable on a phone.
+
+**Live sessions** — Log each set as you go. The rest timer runs as an Android
+foreground service, so it keeps counting with the screen off and notifies you when
+the set is up. Close the app mid-workout and it resumes exactly where you left off.
+
+**Automatic progression** — When you finish a session, the weights and reps you
+actually hit are written back into the program. Next week starts from where you
+ended, not from where you planned.
+
+**Personal records** — Estimated 1RM via the Epley formula, with a celebration when
+you break one.
+
+**Body metrics** — Weight, body fat and circumference tracking with trend charts,
+plus BMI and TDEE calculators.
+
+**Exercise library** — ~1,500 movements built in, plus your own. Search, filter by
+muscle group, sort by how often you've trained it.
+
+**Works offline** — Firestore persistent cache plus localStorage. Start as a guest;
+sign in with Google later and your local data migrates into the account.
+
+## Download
+
+**[→ Get the latest release](https://github.com/eryukselaskar/aurafit-gym/releases/latest)**
+
+| File | When to use it |
 |---|---|
-| `AuraFit-Setup-*.exe` | Normal kurulum. Kısayol oluşturur, yönetici izni istemez. |
-| `AuraFit-Portable-*.exe` | Kurulum istemiyorsan. Tek dosya, çift tıkla çalışır. |
+| `AuraFit-Setup-*.exe` | Normal install. Creates shortcuts, no admin rights needed. |
+| `AuraFit-Portable-*.exe` | No install. Single file, just double-click. |
 
-Windows 10+ (64-bit). Uygulama kod imzalama sertifikasıyla imzalanmadığı için
-SmartScreen uyarı verebilir; **Daha fazla bilgi → Yine de çalıştır** ile geçilir.
+Windows 10+ (64-bit). The binaries aren't code-signed, so SmartScreen will warn
+you — **More info → Run anyway**.
 
-## Neler var
+Android builds aren't published yet; you can build one yourself (see below).
 
-- **Program oluşturucu** — çok günlü split'ler, sürükle-bırak sıralama, set/tekrar/RIR
-  hedefleri, min–max tekrar aralıkları
-- **Canlı antrenman ekranı** — süre takibi, dinlenme sayacı, arka plan bildirimleri
-  (Android'de foreground service), kaldığı yerden devam
-- **Otomatik progresyon** — seans bitince gerçekleşen ağırlık/tekrar değerleri
-  programa geri yazılır
-- **Kişisel rekorlar** — Epley formülüyle tahmini 1RM, rekor kırıldığında kutlama
-- **Ölçüm takibi** — kilo, vücut yağı, çevre ölçüleri
-- **Egzersiz kütüphanesi** — ~1500 hareketlik katalog + kendi eklediklerin
-- **Çevrimdışı çalışır** — Firestore kalıcı önbelleği + localStorage; misafir olarak
-  başlayıp sonra Google hesabına geçince yerel veriler hesaba taşınır
+## Built with
 
-## Kurulum
+React 19 · TypeScript · Vite · Firebase (Auth + Firestore) · Capacitor · Electron ·
+Playwright · Vitest
+
+No UI framework — the design system is a set of CSS custom properties in
+`src/index.css`.
+
+## Quick start
 
 ```bash
 npm install
 npm run dev          # http://localhost:5188
 ```
 
-## Komutlar
+The app runs fully offline against localStorage, so you don't need Firebase
+credentials to try it. Sign-in and cloud sync need your own Firebase project.
 
-| Komut | Ne yapar |
+| Command | What it does |
 |---|---|
-| `npm run dev` | Geliştirme sunucusu (port 5188, sabit) |
-| `npm run build` | Tip kontrolü + üretim derlemesi (`dist/`) |
+| `npm run build` | Type-check + production build |
 | `npm run lint` | ESLint |
-| `npm test` | Birim testleri (Vitest) |
-| `npm run test:watch` | Birim testleri, izleme modunda |
-| `npm run test:e2e` | Uçtan uca testler (Playwright) |
-| `npm run test:e2e:ui` | Playwright arayüzüyle |
-| `npm run electron:start` | Masaüstü uygulamasını çalıştır (önce `build` gerekir) |
-| `npm run electron:build` | Windows kurulumu üret (`dist-electron/`) |
+| `npm test` | Unit tests (Vitest) |
+| `npm run test:e2e` | End-to-end tests (Playwright) |
+| `npm run electron:start` | Run the desktop app (build first) |
+| `npm run electron:build` | Produce the Windows installer + portable exe |
 
-E2E testleri ilk çalıştırmadan önce tarayıcı gerekir: `npx playwright install chromium`
+Before the first e2e run: `npx playwright install chromium`
 
-## Android
+### Android
 
 ```bash
 npm run build
 npx cap sync android
-npx cap open android      # Android Studio'da aç
+cd android && ./gradlew assembleDebug
 ```
 
-Uygulama kimliği `com.aurafit.app`. Google ile giriş yerel
-`@capawesome/capacitor-google-sign-in` eklentisini kullanır; imzalama sertifikasının
-SHA-1'i Firebase konsolunda kayıtlı olmalıdır.
+App id is `com.aurafit.app`. Google Sign-In uses the native
+`@capawesome/capacitor-google-sign-in` plugin, so your signing certificate's SHA-1
+must be registered in the Firebase console.
 
-## Masaüstü (Electron)
+### Desktop
 
-`main.cjs` `dist/` klasörünü `localhost` üzerinde rastgele bir portta sunar — Google
-girişinin yetkili alan adı kontrolünü geçmesi için `file://` yerine bu gerekli.
+`main.cjs` serves `dist/` over `localhost` on a random port rather than `file://`,
+because Google Sign-In validates the origin against Firebase's authorised domains.
+Sign-in opens `public/desktop-login.html` in the system browser, which posts the
+credential back to the local server with a `state` check.
 
-Giriş akışı: uygulama `/api/open-external-login` çağırır → sistem tarayıcısında
-`public/desktop-login.html` açılır (port ve `state` parametreleriyle) → tarayıcı
-kimlik bilgisini `/api/auth-callback`'e gönderir → `state` doğrulanır ve
-`window.handleExternalAuth` tetiklenir.
+## Notes on the architecture
 
-## Firebase
+A few decisions that aren't obvious from the file tree:
 
-```bash
-firebase deploy --only firestore:rules
-firebase deploy --only hosting
-```
+- **The exercise catalogue lives in code, not storage.** localStorage only holds
+  exercises *you* created. The ~870 kB dataset loads as a separate chunk after
+  first paint, so it never blocks startup.
+- **The library renders incrementally.** All 1,500 cards used to hit the DOM at
+  once (13,716 nodes, a 353,000 px tall page); an IntersectionObserver now pages
+  them in 40 at a time.
+- **Set targets have one resolution rule.** Exercise-level values override
+  set-level ones, and that precedence lives in a single pure function
+  (`resolveSetTarget`) used by both the builder and the live session — they used
+  to disagree.
+- **Regression tests are written against real bugs**, not hypotheticals: horizontal
+  overflow at five widths, contrast and focus rings, heading structure, native
+  dialogs, crash recovery, offline session completion.
 
-Firestore düzeni:
+## Localisation
 
-- `users/{uid}/{exercises,programs,history,weightLogs,personalRecords}` — yalnızca
-  sahibi okur/yazar
+The interface is Turkish only right now. Strings are inline in the components
+rather than in a translation catalogue, so English support means extracting them
+first. Contributions welcome — open an issue if you want to take it on.
 
-Başka koleksiyon için kural tanımlı değildir, yani erişim reddedilir.
+A Turkish version of this README is at [README.tr.md](README.tr.md).
 
-`src/utils/firebase.ts` içindeki `apiKey` gizli bilgi değildir; Firebase web
-anahtarları herkese açıktır ve güvenlik tamamen `firestore.rules` ile sağlanır.
+## Contributing
 
-## Proje yapısı
+See [CONTRIBUTING.md](CONTRIBUTING.md). Small fixes can go straight to a PR; for
+anything larger, open an issue first so we can talk it through.
 
-```
-src/
-  App.tsx                  Yönlendirme, auth, Firestore ↔ localStorage senkronizasyonu
-  components/              Ekranlar (Dashboard, ProgramBuilder, ActiveWorkout, ...)
-  utils/
-    localStorage.ts        Yerel kalıcılık + dahili egzersiz/program katalogu
-    datasetExercises.ts    ~1300 hareketlik veri seti (ayrı parça, sonradan yüklenir)
-    firebaseSync.ts        Firestore okuma/yazma
-    personalRecords.ts     1RM ve rekor hesabı (saf, test edilmiş)
-    repTarget.ts           Tekrar hedefi biçimlendirme/doğrulama (saf, test edilmiş)
-    workoutService.ts      Android foreground service köprüsü
-e2e-tests/                 Playwright
-maestro/                   Maestro akışı (Android cihazda)
-```
+## License
 
-## Katkı
-
-Katkılar memnuniyetle karşılanır — bkz. [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Lisans
-
-[MIT](LICENSE) — dilediğin gibi kullan, değiştir ve dağıt; telif bildirimini koru.
-
-## Notlar
-
-- Egzersiz katalogu koda gömülüdür; localStorage'da **yalnızca** kullanıcının kendi
-  eklediği hareketler tutulur.
-- Veri seti ilk boyamadan sonra dinamik `import()` ile yüklenir, bu yüzden kütüphane
-  açılıştan kısa süre sonra dolar.
-- **Çevrimdışı kapsamı:** uygulama açıkken bağlantı kesilirse antrenman tamamlanabilir
-  ve veriler cihazda kalır (`e2e-tests/offline.spec.ts` bunu doğrular). Bağlantı
-  yokken uygulamayı sıfırdan açmak yalnızca Android ve Electron sürümlerinde çalışır;
-  web sürümünde service worker bulunmadığı için sayfa yüklenemez.
+[MIT](LICENSE) — use it, change it, ship it. Just keep the copyright notice.

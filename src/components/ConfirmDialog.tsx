@@ -104,7 +104,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           )}
           <button
             ref={confirmRef}
-            className={`btn confirm-btn ${destructive ? 'btn-danger' : 'btn-primary'}`}
+            className={`btn confirm-btn ${destructive ? 'confirm-btn-danger' : 'btn-primary'}`}
             onClick={onConfirm}
           >
             {confirmLabel ?? (alertOnly ? 'Tamam' : 'Onayla')}
